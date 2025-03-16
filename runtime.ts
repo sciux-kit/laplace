@@ -63,6 +63,7 @@ export function createFor(context: any, target: AdhocFn, o: any, children: any) 
 
     const i = target(context)
     if (Array.isArray(i)) {
+      console.log(i)
       i.forEach((item, index) => node.appendChild(children(context, item, index, index)))
     }
     else if (typeof i === 'object') {
@@ -107,14 +108,14 @@ export function createDocument(...children: ChildNode[]) {
 
 export const __template = __parentContext => {
   const __context = createContext(__parentContext);
-  const __root = (() => createDocument(createComment(' Document Global Scope '), (__context => createFragment(createComment(' Scope 0 Start'), (__context => createFragment(createFor(__context, createExpression(__context, ({list}) => list), __context => createElement('block', {}, null), (__context, i) => createFragment(createIf(__context, {
+  const __root = (() => createDocument(createComment(' Document Global Scope '), (__context => createFragment(createComment(' Scope 0 Start'), (__context => createFragment(createFor(__context, createExpression(__context, ({list}) => list), __context => createElement('block', {}, null), (__context, _, i) => createFragment(createIf(__context, {
     __n: 1,
     0: [createExpression(__context, () => i % 2 === 0), __context => createElement('block', {}, createInterpolation(__context, createExpression(__context, () => i)))],
     __else: __context => createElement('block', {}, createText(`1`))
   }))), createComment(' Scope 0 End')))(mergeContext(__context, {
     list: createExpression(__context, ({foo}) => Array.from({ length: foo }))
   }))))(mergeContext(__context, {
-    list: createExpression(__context, ({foo}) => 100)
+    foo: createExpression(__context, () => 100)
   }))))();
   return __root;
 };
