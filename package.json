@@ -1,0 +1,21 @@
+{
+  "name": "sciux-laplace",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "vite": "^6.2.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@vue/reactivity": "^3.5.13",
+    "@vue/shared": "^3.5.13",
+    "change-case": "^5.4.4",
+    "morphdom": "^2.7.4",
+    "parse-entities": "^4.0.2",
+    "yup": "^1.6.1"
+  }
+}
