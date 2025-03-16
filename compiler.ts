@@ -6,13 +6,13 @@ import { generate } from 'astring'
 
 function _generateTemplateFn(content: string) {
   return `const __template = (__parentContext) => {
-const __context = createContext(__parentContext);
+let __context = createContext(__parentContext);
 const __root = (()=>(${content}))();
 return __root;
 };`
 }
-function _generateLetContext(assign: Record<string, string>, content: string) {
-  return `/* Let Context */\n(((__context) => /* Scope Start [${Object.keys(assign).join(', ')}] */\n(${content}\n))(mergeContext(__context, ${generateRecord(assign)})))`
+function _generateScopeContext(assign: Record<string, string>, content: string) {
+  return `/* Scope Context */\n(((__context) => /* Scope Start [${Object.keys(assign).join(', ')}] */\n(${content}\n))(mergeContext(__context, ${generateRecord(assign)})))`
 }
 const _generateExpression = (expr: string, deps: string[]) => `createExpression(\n__context,\n(${deps.length > 0 ? `{${deps.join(', ')}}` : '/* Empty */'}) => ${expr})`
 const _generateFor = (targetExpr: string, content: string, items?: string, key?: string) => `createFor(__context, ${targetExpr}, (__context${items != null ? `,${items}` : ''}${key != null ? `,${key}` : ''})=>${content})`
@@ -95,9 +95,22 @@ export function generateRecord(rec: Record<string, string>) {
 }
 
 export function generateElement(context: TransformContext, node: RenderElementNode, children = true): string {
-  if (node.name === 'let') {
+  if (node.name === 'scope') {
+    const inits = node.attributes.reduce((acc, attr) => {
+      if (attr.type === 'bind') {
+        acc[attr.name] = context.generateExpression(attr.value)
+      }
+      else if (attr.type === 'static') {
+        acc[attr.name] = attr.value
+      }
+      return acc
+    }, {} as Record<string, string>)
+    return _generateScopeContext(inits,
+      `createFragment(${node.children.map(child => generateNode(context.removeExcludeDeps(...Object.keys(inits)), child)).join(', ')})`
+    )
+  } else if (node.name === 'let') {
     if (node.attributes.length === 0) {
-      return '/* Empty Let */ null'
+      return '/* [let] Empty */ null'
     }
     const inits = node.attributes.reduce((acc, attr) => {
       if (attr.type === 'bind') {
@@ -108,7 +121,7 @@ export function generateElement(context: TransformContext, node: RenderElementNo
       }
       return acc
     }, {} as Record<string, string>)
-    return _generateLetContext(inits,
+    return node.children.length == 0 ? `(/* [let] Assign */(__context = mergeContext(__context, ${generateRecord(inits)})), null)` : _generateScopeContext(inits,
       `createFragment(${node.children.map(child => generateNode(context.removeExcludeDeps(...Object.keys(inits)), child)).join(', ')})`
     )
   }

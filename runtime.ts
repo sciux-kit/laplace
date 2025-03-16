@@ -24,8 +24,6 @@ export function createInterpolation(context: any, fn: AdhocFn) {
 export function createFragment(...children: ChildNode[]) {
   const fragment = document.createDocumentFragment()
   fragment.append(...children)
-  console.trace(children, fragment)
-
   return fragment
 }
 
@@ -63,7 +61,6 @@ export function createFor(context: any, target: AdhocFn, o: any, children: any) 
 
     const i = target(context)
     if (Array.isArray(i)) {
-      console.log(i)
       i.forEach((item, index) => node.appendChild(children(context, item, index, index)))
     }
     else if (typeof i === 'object') {
