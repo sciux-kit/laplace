@@ -1,0 +1,15 @@
+<!-- Document Global Scope -->
+
+<let :list="foo + 1">
+
+<!-- Scope 0 Start-->
+<let :list="Array(foo).items()">
+  
+<block #for="i in list">
+    <block #if="i % 2 === 0">
+      
+        {{ i }}
+    </block>
+    <block #else>1</block>
+</block>
+<!-- Scope 0 End-->

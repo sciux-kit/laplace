@@ -3,6 +3,25 @@
 import { camelCase } from 'change-case'
 import { type AttributeNode, type CDATANode, type CommentNode, type DocumentNode, type FragmentNode, NodeType, type TextNode, type ValueNode, type ChildNode, type ElementNode } from "./parser"
 
+export interface RenderForNode {
+  type: 'for'
+  child: RenderNode
+  expr: [string, string | null, string | null, string | null]
+  raw: ElementNode
+}
+
+export interface RenderIfBranch {
+  child: RenderNode
+  condition: string
+}
+
+export interface RenderIfNode {
+  type: 'if'
+  branch: RenderIfBranch[]
+  else: RenderNode | null
+  raw: ElementNode
+}
+
 export interface RenderElementNode {
   type: 'element'
   name: string
@@ -50,8 +69,10 @@ export type RenderNode =
   | RenderCommentNode
   | RenderFragmentNode
   | RenderDocumentNode
+  | RenderForNode
+  | RenderIfNode
 
-export type RenderAttribute = 
+export type RenderAttribute =
   | RenderStaticAttribute
   | RenderBindAttribute
   | RenderOnAttribute
@@ -87,12 +108,132 @@ export interface RenderDirectiveAttribute {
   raw: AttributeNode
 }
 
+const stripParensRE = /^\(|\)$/g
+const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/
+const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
+
+export function parseForExpr(input: string) {
+  const match = input.match(forAliasRE)
+  if (match) {
+    const res: [string, string | null, string | null, string | null] = [match[2], null, null, null]
+    const alias = match[1].replace(stripParensRE, '').trim()
+    const iteratorMatch = alias.match(forIteratorRE)
+    if (iteratorMatch) {
+      res[1] = alias.replace(forIteratorRE, '')
+      res[2] = iteratorMatch[1].trim()
+      if (iteratorMatch[2]) {
+        res[3] = iteratorMatch[2].trim()
+      }
+    } else {
+      res[1] = alias.trim()
+    }
+    return res
+  }
+}
+
+
+export function resolveChildren(nodes: RenderNode[]): RenderNode[] {
+  const out: RenderNode[] = []
+  let i = 0
+  while (i < nodes.length) {
+    console.log(i, nodes[i])
+    const node = nodes[i]
+    if (node.type != 'element') {
+      i += 1
+      if (node.type == 'text' && node.content.trim() == '') {
+        continue
+      }
+      out.push(node)
+      continue
+    }
+
+    const cond = node.attributes.filter(a => a.type === 'directive' && (a.name === 'if' || a.name === 'for'))
+    if (cond.length > 1) {
+      throw new Error('Invalid node: multiple if/for directives')
+    }
+
+    if (cond[0]?.name === 'if') {
+      console.log('!!if')
+      const branch: RenderIfBranch[] = []
+      let elseNode: RenderNode | null = null
+
+      branch.push({
+        condition: cond[0].value,
+        child: node
+      })
+
+      let j = i + 1
+      while (j < nodes.length) {
+        const child = nodes[j]
+        if (child.type !== 'element') {
+          if (child.type == 'text' && child.content.trim() == '') {
+            j += 1
+            continue
+          }
+          break
+        }
+
+        const flags = child.attributes.filter(a => a.type === 'directive' && (a.name === 'elif' || a.name === 'else'))
+        if (flags.length > 1) {
+          throw new Error('Invalid node: multiple elif/else directives')
+        }
+
+        if (flags.length == 0) {
+          break;
+        }
+
+        if (flags[0].name === 'elif') {
+          branch.push({
+            condition: flags[0].value,
+            child
+          })
+          j += 1
+        } else {
+          elseNode = child
+          j += 1
+          break
+        }
+      }
+      out.push({
+        type: 'if',
+        branch,
+        else: elseNode,
+        raw: node.raw
+      })
+      i = j
+      continue
+    }
+    else if (cond[0]?.name === 'for') {
+      const [flag] = cond
+      const expr = parseForExpr(flag.value)
+      if (expr == null) {
+        throw new Error('Invalid for expression')
+      }
+      const forNode: RenderForNode = {
+        type: 'for',
+        child: node,
+        expr,
+        raw: node.raw
+      }
+      out.push(forNode)
+      i += 1
+      continue
+    }
+    else {
+      out.push(node)
+      i += 1
+      continue
+    }
+  }
+  return out
+}
+
 export function resolveNode(cNode: ChildNode): RenderNode {
   switch (cNode.type) {
     case NodeType.DOCUMENT:
       return {
         type: 'document',
-        children: cNode.children.map(resolveNode),
+        children: resolveChildren(cNode.children.map(resolveNode)),
         filename: cNode.filename,
         raw: cNode,
       }
@@ -101,7 +242,7 @@ export function resolveNode(cNode: ChildNode): RenderNode {
         type: 'element',
         name: cNode.tag,
         attributes: cNode.attributes.map(resolveAttribute),
-        children: cNode.children.map(resolveNode),
+        children: resolveChildren(cNode.children.map(resolveNode)),
         raw: cNode,
       }
     case NodeType.TEXT:
@@ -120,7 +261,7 @@ export function resolveNode(cNode: ChildNode): RenderNode {
     case NodeType.FRAGMENT:
       return {
         type: 'fragment',
-        children: cNode.children.map(resolveNode),
+        children: resolveChildren(cNode.children.map(resolveNode)),
         raw: cNode,
       }
     case NodeType.VALUE:
@@ -176,3 +317,4 @@ export function resolveAttribute(attr: AttributeNode): RenderAttribute {
     }
   }
 }
+
