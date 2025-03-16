@@ -127,7 +127,7 @@ export function generateNode(context: TransformContext, node: RenderNode): strin
     return generateElement(context, node)
   }
   else if (node.type === 'text') {
-    return node.content.trim() === '' ? '/* Empty Text */null' : `createText(\`${node.content.trim()}\`)`
+    return node.content.trim() === '' ? '/* Empty Text */null' : `createText(\`${node.content}\`)`
   }
   else if (node.type === 'interpolation') {
     return `createInterpolation(__context, ${context.generateExpression(node.content)})`
@@ -162,7 +162,7 @@ export function generateNode(context: TransformContext, node: RenderNode): strin
   return 'null'
 }
 
-export function generateDocument(node: RenderNode) {
+export function generateDocumentTemplate(node: RenderNode) {
   if (node.type !== 'document') {
     throw new Error('Invalid node type')
   }

@@ -104,18 +104,26 @@ export function createDocument(...children: ChildNode[]) {
   return createFragment(...children)
 }
 
-// Test
+export function createEnvironment() {
+  return Object.seal({
+    createContext,
+    createText,
+    createInterpolation,
+    createFragment,
+    createComment,
+    createIf,
+    createFor,
+    createExpression,
+    mergeContext,
+    createElement,
+    createDocument,
+  })
+}
 
-export const __template = __parentContext => {
-  const __context = createContext(__parentContext);
-  const __root = (() => createDocument(createComment(' Document Global Scope '), (__context => createFragment(createComment(' Scope 0 Start'), (__context => createFragment(createFor(__context, createExpression(__context, ({list}) => list), __context => createElement('block', {}, null), (__context, _, i) => createFragment(createIf(__context, {
-    __n: 1,
-    0: [createExpression(__context, () => i % 2 === 0), __context => createElement('block', {}, createInterpolation(__context, createExpression(__context, () => i)))],
-    __else: __context => createElement('block', {}, createText(`No`))
-  }))), createComment(' Scope 0 End')))(mergeContext(__context, {
-    list: createExpression(__context, ({foo}) => Array.from({ length: foo }))
-  }))))(mergeContext(__context, {
-    foo: createExpression(__context, () => 10)
-  }))))();
-  return __root;
-};
+
+export function compileTemplate(code: string) {
+  const env = createEnvironment()
+  console.log(code)
+  const fn = new Function('', `return ((__env)=>{with(__env){${code};return __template;}})`)()
+  return fn(env)
+}

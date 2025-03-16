@@ -1,14 +1,12 @@
 <!-- Document Global Scope -->
 
-<let :list="foo + 1">
+<let :foo="5 * 2">
 
 <!-- Scope 0 Start-->
-<let :list="Array(foo).items()">
+<let :list="Object.keys(Array.from({ length: foo }))">
 
 <block #for="i in list">
-    <block #if="i % 2 === 0">
-        {{ 123 }}
-    </block>
-    <block #else>1</block>
+    <block #if="i % 2 === 0">{{ `${i} is even.` }}</block>
+    <block #else>It is odd.</block>
 </block>
 <!-- Scope 0 End-->
