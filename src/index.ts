@@ -1,0 +1,6 @@
+export * from './compiler'
+export * from './component'
+export * from './parser'
+export * from './render'
+export * from './runtime'
+export * from '@vue/reactivity'

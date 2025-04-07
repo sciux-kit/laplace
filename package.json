@@ -1,17 +1,24 @@
 {
   "name": "sciux-laplace",
-  "module": "index.ts",
   "type": "module",
-  "private": true,
+  "version": "0.0.1",
   "devDependencies": {
     "@antfu/eslint-config": "^4.10.1",
     "@types/babel__traverse": "^7.20.6",
-    "@types/bun": "latest",
     "eslint": "^9.22.0",
+    "tsup": "^8.4.0",
     "vite": "^6.2.2"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "exports": {
+    "import": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "dependencies": {
     "@babel/parser": "^7.26.10",

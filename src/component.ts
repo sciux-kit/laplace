@@ -1,7 +1,6 @@
 import * as t from 'yup'
 import type { RenderAttribute, RenderElementNode } from './render'
 
-
 export type RenderFn = () => any
 
 export type DefineComponent = {

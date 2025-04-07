@@ -1,6 +1,3 @@
-// @ts-nocheck
-
-
 import { reactive, effect, toRefs, computed } from '@vue/reactivity'
 
 export type AdhocFn = (o: any) => any
