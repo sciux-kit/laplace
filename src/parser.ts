@@ -623,7 +623,7 @@ export function parseFragment(context: ParserContext): FragmentNode {
   return fragment
 }
 
-function traverse<T>(traverser: (node: ChildNode, context: T) => false | void, node: ChildNode[] | ChildNode, context: T, maxDepth: false | number = false): T {
+export function traverse<T>(traverser: (node: ChildNode, context: T) => false | void, node: ChildNode[] | ChildNode, context: T, maxDepth: false | number = false): T {
   const nodes = Array.isArray(node) ? node : [node]
 
   function visit(nodes: ChildNode[], depth: number): boolean {

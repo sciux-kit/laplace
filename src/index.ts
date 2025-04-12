@@ -1,6 +1,8 @@
 export * from './compiler'
 export * from './component'
-export * from './parser'
 export * from './render'
 export * from './runtime'
-export * from '@vue/reactivity'
+
+import * as parser from './parser'
+import * as reactivity from '@vue/reactivity'
+export default { ...reactivity, ...parser }

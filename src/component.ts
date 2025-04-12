@@ -13,19 +13,6 @@ export function defineComponent<const T extends DefineComponent>(options: T): T 
   return options
 }
 
-
-const a = defineComponent({
-  name: 'button',
-  props: {
-    type: t.string()
-  },
-  setup(props, emit) {
-    return () => {
-      
-    }
-  }
-})
-
 export type ResolvedNodeAttribute = {
   statics: Record<string, string>
   bind: Record<string, string>
@@ -67,4 +54,6 @@ export function createComponentInstance(proto: DefineComponent, node: RenderElem
     children: node.children,
     emit: () => {}
   }
+
+  return instance
 }
