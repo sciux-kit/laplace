@@ -2,36 +2,55 @@
   "name": "sciux-laplace",
   "type": "module",
   "version": "0.0.1-alpha.1",
-  "devDependencies": {
-    "@antfu/eslint-config": "^4.10.1",
-    "@types/babel__traverse": "^7.20.6",
-    "eslint": "^9.22.0",
-    "tsup": "^8.4.0",
-    "vite": "^6.2.2"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch"
-  },
+  "description": "Renderer for Sciux Toolkit.",
   "exports": {
-    "import": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    ".": {
+      "dev": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./builtins": {
+      "types": "./dist/builtins/index.d.ts",
+      "import": "./dist/builtins/index.js",
+      "dev": "./src/builtins/index.ts"
+    },
+    "./builtins/*": {
+      "types": "./dist/builtins/*.d.ts",
+      "import": "./dist/builtins/*.js",
+      "dev": "./src/builtins/*.ts"
+    },
+    "./middlewares/*": {
+      "types": "./dist/middlewares/*.d.ts",
+      "import": "./dist/middlewares/*.js",
+      "dev": "./src/middlewares/*.ts"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "publish": "npm publish",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "pub": "pnpm publish",
+    "lint": "eslint ."
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
-    "@babel/parser": "^7.26.10",
-    "@babel/traverse": "^7.26.10",
-    "@babel/types": "^7.26.10",
     "@vue/reactivity": "^3.5.13",
     "@vue/shared": "^3.5.13",
-    "acorn": "^8.14.1",
-    "acorn-walk": "^8.3.4",
-    "astring": "^1.9.0",
-    "change-case": "^5.4.4",
+    "clsx": "^2.1.1",
+    "css-what": "^6.1.0",
     "morphdom": "^2.7.4",
-    "parse-entities": "^4.0.2",
-    "yup": "^1.6.1"
+    "parse-entities": "^4.0.2"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^2.27.3",
+    "eslint": "9.9.0",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3"
   }
 }
