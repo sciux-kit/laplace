@@ -1,168 +1,140 @@
-import { type Reactive, reactive, toRefs } from '@vue/reactivity'
+import { computed, effect, MaybeRef, Ref, toValue } from "@vue/reactivity";
+import { Component } from "./component";
+import { type } from 'arktype'
 import patch from 'morphdom'
-import { type SciuxBasicNode, type SciuxSourceNode, isSciuxTextNode, parse } from './resolver'
+import { Flow } from "./flow";
+import { BaseNode, ElementNode } from "./parser";
 
-const kCompOptions = Symbol('Component Options')
-
-export type Attributes = Record<string, any>
-export type Context = Reactive<Record<string, any>>
-export type ComponentOptions = Record<string, any>
-export type Component<T extends Attributes = Attributes, O extends ComponentOptions = ComponentOptions> = ComponentFn<T> & { [kCompOptions]: Partial<O> }
-export type ComponentFn<T extends Attributes = Attributes> =
-  (props: T, children: () => Node[], node: SciuxSourceNode) => Node | Node[] | void
-
-export const builtins = new Map<string, Component<any>>()
-
-export type PreMiddleware = (node: SciuxSourceNode, context: Context) => void
-export type PostMiddleware = (node: SciuxSourceNode, context: Context, domNode: Node | Node[], comp: Component<any, any>) => void
-export const middlewares = {
-  pre: new Map<string, PreMiddleware>(),
-  post: new Map<string, PostMiddleware>(),
-} as const
-
-let activeContext: Context | null = null
-
-export { patch }
-
-export function hasContext(): boolean {
-  return activeContext != null
+export const components = new Map<string, Component<string, Record<string, unknown>>>()
+export const globals: Context = {}
+export function addGlobals(additional: Context) {
+  Object.assign(globals, additional)
 }
 
-export function getCurrentContext(): Context {
-  if (activeContext == null) {
-    throw new Error('no active context')
-  }
-
-  return activeContext
+export type Context = Record<string, MaybeRef<unknown>>
+export let activeContext: Context = {}
+export function addActiveContext(additional: Context) {
+  activeContext = { ...activeContext, ...additional }
 }
 
-export function setCurrentContext(context: Context): void {
-  activeContext = context
+export type MaybeArray<T> = T | T[]
+export function toArray<T>(o: MaybeArray<T>): T[] {
+  return Array.isArray(o) ? o : [o]
 }
 
-export function provideWith(children: () => Node[], context: Context): Node[] {
-  return runInContext(
-    context,
-    children,
-  )
+export function unwrapRefs(o: Context): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, toValue(v)]))
 }
 
-export function mergeContext(target: Context, from: Context): Context {
-  return reactive(Object.assign(toRefs(target), toRefs(from)))
-}
-
-export function runInContext<T extends Context, R>(
-  context: T,
-  fn: () => R,
-): R {
-  const oldContext = activeContext
-  activeContext = context
-  try {
-    return fn()
-  }
-  finally {
-    activeContext = oldContext
+export function createProcessor(o: Context): (source: string) => unknown {
+  return (source) => {
+    if (typeof source === "string") {
+      return _createProcessor(o)(source, o)
+    } else {
+      throw new TypeError('invalid source')
+    }
   }
 }
-
-export function createAdhoc<T = unknown>(src: string, context: Context): () => T
-export function createAdhoc<T = unknown>(src: string): (context?: Context) => T
-export function createAdhoc<T = unknown>(src: string, context?: Context): (context?: Context) => T
-export function createAdhoc<T = unknown>(src: string, context?: Context): (context?: Context) => T {
+export function _createProcessor<T extends Context>(o: T): (source: string, context?: T) => unknown {
   // eslint-disable-next-line no-new-func
-  const adhoc = new Function(`return (function($__sciux_ctx){with($__sciux_ctx){return (${src});}});`)() as any
-  return (ctx) => {
-    if (ctx == null && context == null) {
+  return (source, ctx?) => {
+    const adhoc = new Function(`return (function($__eich_ctx){with($__eich_ctx){return (${source});}});`)() as any
+    if (ctx == null && o == null) {
       throw new TypeError('missing context')
     }
 
-    return adhoc(ctx ?? context!)
+    return computed(() => adhoc(ctx ?? o))
   }
 }
 
-const noopComp = defineComponent(
-  (_, children, node) => {
-    if (node.tag != 'noop') {
-      console.warn(`[sciux] ignoring <${String(node.tag)}>, instead of using <noop>`)
-    }
-    return children()
-  },
-)
+export type AttrSource = string | ExprAttrSource | FlowAttrSource | EventAttrSource
+export type ExprAttrSource = `:${string}`
+export type FlowAttrSource = `#${string}`
+export type EventAttrSource = `@${string}`
 
-builtins.set('fragment', noopComp)
-builtins.set('noop', noopComp)
-
-export function renderComp(comp: Component<any>, node: SciuxBasicNode): Node | Node[] {
-  return comp(node.attrs, () => node.children.flatMap(renderNode), node) ?? []
+export const FLOW = Symbol('flow')
+export type FlowAttr = [typeof FLOW, Flow]
+export const EVENT = Symbol('event')
+export type EventAttr = [typeof EVENT, Event]
+export type Attr = unknown | FlowAttr | EventAttr
+export type Attrs = Record<string, Attr>
+export function useAttrs(attrSources: Record<string, AttrSource>, context: Context): Attrs {
+  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [k, useAttr(v, context)])) as Attrs
+}
+export function useAttr(source: string, context: Context) {
+  if (source.startsWith(':')) {
+    return useExprAttr(source as ExprAttrSource, context)
+  } else if (source.startsWith('#')) {
+    return useFlowAttr(source as FlowAttrSource, context)
+  } else if (source.startsWith('@')) {
+    return useEventAttr(source as EventAttrSource, context)
+  } else {
+    return source
+  }
+}
+export function useExprAttr(source: ExprAttrSource, context: Context) {
+  return createProcessor(context)(source)
+}
+export function useFlowAttr(source: FlowAttrSource, context: Context) {
+}
+export function useEventAttr(source: EventAttrSource, context: Context) {
+}
+export function getCommonAttrs(attrs: Attrs) {
+  return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT)))
 }
 
-export function renderNode(node: SciuxSourceNode): Node | Node[] {
-  const context = getCurrentContext()
+export function renderComp(element: ElementNode) {
+  const comp = components.get(element.tag)
+  if (!comp) {
+    throw new Error(`[sciux laplace] component <${element.tag}> not found`)
+  }
 
-  if (middlewares.pre.size > 0) {
-    middlewares.pre.forEach((middleware) => {
-      middleware(node, context)
+  return _renderComp(comp, element)
+}
+export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode) {
+  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals } = comp(activeContext)
+  addActiveContext(compGlobals)
+  if (name !== element.tag) {
+    throw new Error(`[sciux laplace] component <${element.tag}> does not match <${name}>`)
+  }
+
+  const attributes = getCommonAttrs(
+    useAttrs(
+      Object.fromEntries(element.attributes.map(({ name, value }) => [name, value])),
+      unwrapRefs(activeContext)
+    )
+  )
+  if (typedAttrs(unwrapRefs(attributes)) instanceof type.errors) {
+    throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
+  }
+
+  const oldContext = activeContext
+  addActiveContext(provides)
+  const node = setup(
+    attributes as A,
+    () =>  _renderComp(comp, element)
+  )
+  effect(() => {
+    const newNode = setup(
+      attributes as A,
+      () =>  _renderComp(comp, element)
+    )
+    patch(node, newNode, {
+      childrenOnly: true,
     })
-  }
+  })
+  activeContext = oldContext
 
-  let domNode: Node | Node[]
-  let comp: Component<any, any>
-
-  if (isSciuxTextNode(node)) {
-    domNode = document.createTextNode(node.value)
-  }
-  else if (builtins.has(node.tag)) {
-    comp = builtins.get(node.tag)!
-    domNode = renderComp(comp, node)
-  }
-  else {
-    comp = noopComp
-    domNode = renderComp(comp, node)
-  }
-
-  if (domNode == null) {
-    domNode = []
-  }
-
-
-  if (middlewares.post.size > 0) {
-    middlewares.post.forEach((middleware) => {
-      middleware(node, context, domNode, comp)
-    })
-  }
-
-  node.raw.domNode = domNode
-
-  return domNode
+  return node
 }
 
-export function renderRoots(roots: SciuxSourceNode[], target?: Node, initialContext: Reactive<Context> = {}): [Node[], Reactive<Context>] {
-  const context = reactive(initialContext)
-  const children = runInContext(context, () => roots.flatMap(renderNode))
-  if (target) {
-    children.forEach(child => target.appendChild(child))
-  }
-  return [children, context]
+export function renderValue(value: string) {
+  const v = createProcessor(activeContext)(value)
+  return document.createTextNode(v!.toString())
 }
 
-export function render(source: string, target?: Node, initialContext: Reactive<Context> = {}): [Node[], Reactive<Context>] {
-  const ast = parse(source)
-  return renderRoots(ast, target, initialContext)
+export function renderText(text: string) {
+  return document.createTextNode(text)
 }
 
-export function getComponentOptions<T extends ComponentOptions>(o: Component<any, any>): Partial<T> | undefined {
-  return o[kCompOptions]
-}
 
-// eslint-disable-next-line ts/no-empty-object-type
-export function defineComponent<T extends Attributes = Attributes, O extends ComponentOptions = {}>(comp: ComponentFn<T>, options: Partial<O> = {} as O): Component<T, O> {
-  return Object.assign(comp, { [kCompOptions]: options })
-}
-
-export { textMode } from './resolver'
-
-export function defineMiddleware({ type, fn }: { type: 'pre', fn: PreMiddleware }): PreMiddleware
-export function defineMiddleware({ type, fn }: { type: 'post', fn: PostMiddleware }): PostMiddleware
-export function defineMiddleware({ fn }: { type: 'pre' | 'post', fn: PreMiddleware | PostMiddleware }): PreMiddleware | PostMiddleware {
-  return fn
-}
