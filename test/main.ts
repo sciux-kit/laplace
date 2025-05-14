@@ -55,4 +55,3 @@ const source = `
 `
 
 render(source, document.getElementById('app')!)
-

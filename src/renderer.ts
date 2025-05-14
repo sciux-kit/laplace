@@ -6,6 +6,8 @@ import { Flow } from "./flow";
 import { BaseNode, ElementNode, NodeType, parse, TextNode, ValueNode } from "./parser";
 
 export const components = new Map<string, Component<string, any, {}>>()
+export const flows = new Map<string, Flow>()
+
 export const globals: Context = {}
 export function addGlobals(additional: Context) {
   Object.assign(globals, additional)
@@ -15,6 +17,9 @@ export type Context = Record<string, MaybeRef<unknown>>
 export let activeContext: Context = {}
 export function addActiveContext(additional: Context) {
   activeContext = { ...activeContext, ...additional }
+}
+export function getContext() {
+  return activeContext
 }
 
 export type MaybeArray<T> = T | T[]
@@ -61,13 +66,13 @@ export const EVENT = Symbol('event')
 export type EventAttr = [typeof EVENT, Event]
 export type Attr = unknown | FlowAttr | EventAttr
 export type Attrs = Record<string, Attr>
-export function useAttrs(attrSources: Record<string, AttrSource>, context: Context): Attrs {
+export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: ReturnType<typeof createProcessor>): Attrs {
   console.log('attrs-source', attrSources)
-  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [k, useAttr(k, v, context)])) as Attrs
+  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [k, useAttr(k, v, context, processor)])) as Attrs
 }
-export function useAttr(key: string, source: string, context: Context) {
+export function useAttr(key: string, source: string, context: Context, processor?: ReturnType<typeof createProcessor>) {
   if (key.startsWith(':')) {
-    return useExprAttr(source as ExprAttrSource, context)
+    return useExprAttr(source as ExprAttrSource, context, processor)
   } else if (key.startsWith('#')) {
     return useFlowAttr(source as FlowAttrSource, context)
   } else if (key.startsWith('@')) {
@@ -76,8 +81,8 @@ export function useAttr(key: string, source: string, context: Context) {
     return source
   }
 }
-export function useExprAttr(source: ExprAttrSource, context: Context) {
-  return createProcessor(context)(source)
+export function useExprAttr(source: ExprAttrSource, context: Context, processor?: ReturnType<typeof createProcessor>) {
+  return processor!(source)
 }
 export function useFlowAttr(source: FlowAttrSource, context: Context) {
 }
@@ -98,9 +103,11 @@ export function renderComp(element: ElementNode) {
 export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode) {
 
   console.log('origin-attrs:', element.attributes)
+  const processor = createProcessor(activeContext)
   const originalAttrs = useAttrs(
     Object.fromEntries(element.attributes.map(({ name, value }) => [name, value])),
-    unwrapRefs(activeContext)
+    unwrapRefs(activeContext),
+    processor
   )
   // console.log('original-attrs:', originalAttrs)
   const attributes = resolve(
@@ -145,20 +152,33 @@ export function renderText(text: string) {
   return document.createTextNode(text)
 }
 
-export function renderNode(node: BaseNode) {
+export function renderNode(node: BaseNode): Node | Node[] {
   if (node.type === NodeType.TEXT) {
     return renderText((node as TextNode).content)
   } else if (node.type === NodeType.VALUE) {
     return renderValue((node as ValueNode).value)
   } else if (node.type === NodeType.ELEMENT) {
-    return renderComp(node as ElementNode)
+    const elementNode = node as ElementNode
+    const flowAttrs = elementNode.attributes.filter(attr => attr.name.startsWith('#'))
+
+    if (flowAttrs.length > 0) {
+      
+    }
+
+    return renderComp(elementNode)
   }
+  throw new Error('Unreachable')
 }
 
 export function renderRoots(roots: BaseNode[], initialContext: Context = {}) {
   const nodes: Node[] = []
   roots.forEach(root => {
-    nodes.push(renderNode(root)!)
+    const result = renderNode(root)
+    if (Array.isArray(result)) {
+      nodes.push(...result)
+    } else {
+      nodes.push(result)
+    }
   })
   return nodes
 }
