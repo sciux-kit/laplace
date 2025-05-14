@@ -1,17 +1,17 @@
-import { Ref } from "@vue/reactivity"
+import { Ref, ToRefs, WatchSource } from "@vue/reactivity"
 import { Type } from 'arktype'
 import { Context } from "./renderer"
 
-export type ComponentChildren = () => Node
-export type ComponentSetup<A extends Record<string, unknown>> = (attrs: A, children: ComponentChildren) => Node
+export type ComponentChildren = () => Node[]
+export type ComponentSetup = (children: ComponentChildren) => Node
 export type Component<
   T extends string,
   A extends Record<string, unknown>,
   C extends Context = {}
-> = (context: C) => {
+  > = (context: C, attrs: ToRefs<A>) => {
   name: T,
   attrs: Type<A>,
-  setup: ComponentSetup<A>,
+  setup: ComponentSetup,
   provides: Record<string, Ref<unknown>>
   globals: Record<string, Ref<unknown>>
 }
