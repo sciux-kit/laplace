@@ -1,12 +1,16 @@
 import { BaseNode } from "./parser"
-import { Context } from "./renderer"
 
-export type Flow = (
-  value: string,
-  source: BaseNode | BaseNode[],
-  resolve: (node: BaseNode) => Node,
-  node: Node | Node[]
-) => Node | Node[]
+type PreFlow = {
+  type: 'pre',
+  flow: (value: string, source: BaseNode | BaseNode[], render: (node: BaseNode) => Node) => Node | Node[]
+}
+type PostFlow = {
+  type: 'post',
+  flow: (value: string, node: Node) => void
+}
+export type Flow = (PreFlow | PostFlow) & {
+  name: string
+}
 
 export function defineFlow(flow: Flow): Flow {
   return flow
