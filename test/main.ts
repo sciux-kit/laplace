@@ -1,4 +1,5 @@
-import { components, defineComponent, render } from '../src'
+import { components, defineComponent, flows, render } from '../src'
+import f from '../src/flows/for'
 import { type } from 'arktype'
 
 const testAttrs = type({
@@ -34,8 +35,8 @@ const letComp = defineComponent<'let', typeof letAttrs.infer>((context, attrs) =
     setup: (children) => {
       console.log('update let')
       const node = document.createElement('div')
-      const text1 = document.createTextNode(`LET VAR ${attrs.name} = ${attrs.value.toString()}`)
-      node.appendChild(text1)
+      // const text1 = document.createTextNode(`LET VAR ${attrs.name} = ${attrs.value.toString()}`)
+      // node.appendChild(text1)
       children().forEach(child => {
         node.appendChild(child)
       })
@@ -47,10 +48,11 @@ const letComp = defineComponent<'let', typeof letAttrs.infer>((context, attrs) =
 })
 components.set('test', test)
 components.set('let', letComp)
+flows.set('for', f)
 
 const source = `
 <let name="test" :value="2233 + 333">
-  <test :test="test"/>
+  {{ test + 88888888888 }}
 </let>
 `
 

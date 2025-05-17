@@ -1,4 +1,4 @@
-import { computed, effect, MaybeRef, ref, Ref, toRef, ToRefs, toValue } from "@vue/reactivity";
+import { computed, effect, MaybeRef, ref, Ref, toRef, toRefs, ToRefs, toValue, WatchSource } from "@vue/reactivity";
 import { Component } from "./component";
 import { type } from 'arktype'
 import patch from 'morphdom'
@@ -144,8 +144,12 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
 }
 
 export function renderValue(value: string) {
-  const v = createProcessor(activeContext)(value)
-  return document.createTextNode(v!.toString())
+  const interalContext = getContext()
+  const node = document.createTextNode((createProcessor(unwrapRefs(interalContext))(value) as Ref).value.toString())
+  effect(() => {
+    node.textContent = (createProcessor(unwrapRefs(interalContext))(value) as Ref).value.toString()
+  })
+  return node
 }
 
 export function renderText(text: string) {
@@ -159,13 +163,31 @@ export function renderNode(node: BaseNode): Node | Node[] {
     return renderValue((node as ValueNode).value)
   } else if (node.type === NodeType.ELEMENT) {
     const elementNode = node as ElementNode
-    const flowAttrs = elementNode.attributes.filter(attr => attr.name.startsWith('#'))
+    let flowAttrs = elementNode.attributes.filter(attr => attr.name.startsWith('#'))
 
-    if (flowAttrs.length > 0) {
-      
+    let result: Node | Node[] | null = null
+    // Pre-flow
+    if (flowAttrs.length <= 0) {
+      result = renderComp(elementNode)
+    } else {
+      const { name, value } = flowAttrs[0]
+      const flow = flows.get(name.slice(1))
+      if (flow && flow.type === 'pre') {
+        (node as ElementNode).attributes, flowAttrs = (node as ElementNode).attributes.filter(attr => attr.name !== name)
+        result = flow.flow(value, node, renderNode)
+      }
     }
-
-    return renderComp(elementNode)
+    for (const attr of flowAttrs) {
+      const { name, value } = attr
+      const flow = flows.get(name.slice(1))
+      if (flow && flow.type === 'post') {
+        const nodes = toArray(result)
+        for (const n of nodes) {
+          flow.flow(value, n!)
+        }
+      }
+    }
+    return result!
   }
   throw new Error('Unreachable')
 }
@@ -187,5 +209,6 @@ export function render(source: string, target?: Node, initialContext: Context = 
   const ast = parse(source)
   console.log('ast:', ast)
   const nodes = renderRoots(ast.children, initialContext)
-  nodes.forEach(node => target?.appendChild(node))
+  console.log('nodes:', nodes)
+  nodes.forEach(node => { if (node) target?.appendChild(node) })
 }
