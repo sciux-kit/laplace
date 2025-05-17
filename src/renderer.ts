@@ -126,10 +126,10 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   }
 
   const oldContext = activeContext
-  console.log('oldContext', oldContext)
+
   addActiveContext(provides ?? {})
 
-  console.log('activeContext', activeContext)
+
 
   const childrenProcessor = createProcessor(activeContext)
   const node = setup(
@@ -137,7 +137,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   )
   effect(() => {
 
-    console.log('activeContext', activeContext)
+
     const newNode = setup(
       () => renderRoots(element.children, childrenProcessor)
     )
@@ -179,9 +179,9 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
       const { name, value } = flowAttrs[0]
       const flow = flows.get(name.slice(1))?.(processor)
       if (flow && flow.type === 'pre') {
-        console.error(name, (node as ElementNode).attributes.filter(attr => attr.name !== name));
+
         flowAttrs = (node as ElementNode).attributes = (node as ElementNode).attributes.filter(attr => attr.name !== name)
-        console.error(node, flowAttrs)
+
         result = flow.flow(value, node, renderNode)
       }
     }

@@ -18,7 +18,7 @@ const test = defineComponent<'test', typeof testAttrs.infer>((attrs, context) =>
     setup: () => {
 
 
-      console.error(context)
+
       return document.createTextNode(attrs.test.value.toString())
     },
     provides: {},

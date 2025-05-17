@@ -27,9 +27,9 @@ export default defineFlow((processor) => {
     name: 'for',
     type: 'pre',
     flow(value, source, render) {
-      console.log('execute once!')
+
       const { key, value: iterable } = resolve(value, processor)
-      console.log('iterable', iterable.value)
+
       const getNodes = () => {
         const nodes = []
         for (const item of iterable.value) {
@@ -43,16 +43,6 @@ export default defineFlow((processor) => {
       const frag = document.createDocumentFragment()
       frag.append(...getNodes())
 
-      // window.addEventListener('load', () => {
-      //   watch(iterable, (newVal) => {
-      //     console.log('iterable changed', internalContext)
-      //     const cloned = frag.parentElement?.cloneNode()
-      //     getNodes().forEach(node => {
-      //       cloned?.appendChild(node)
-      //     })
-      //     patch(frag.parentElement!, cloned!)
-      //   })
-      // })
       return frag
     },
   }
