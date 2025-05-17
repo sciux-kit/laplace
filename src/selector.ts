@@ -1,4 +1,4 @@
-import type { ChildNode, DocumentNode, ElementNode, FragmentNode } from './parser'
+import type { BaseNode, ChildNode, DocumentNode, ElementNode, FragmentNode } from './parser'
 import { parse, type PseudoSelector, type Selector } from 'css-what'
 import { NodeType, queryNode } from './parser'
 
@@ -289,4 +289,16 @@ export function querySelectorAll(root: ChildNode | ChildNode[], selector: string
     root,
     false,
   ))
+}
+
+export function revertToString(node: DocumentNode): string {
+  return ''
+}
+
+export function querySelectorXPath(node: DocumentNode, selector: string): ChildNode | null {
+  return null
+}
+
+export function querySelectorXPathAll(node: DocumentNode, selector: string): Set<ChildNode> {
+  return new Set()
 }
