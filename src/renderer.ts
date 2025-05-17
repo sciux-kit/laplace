@@ -51,7 +51,7 @@ export function _createProcessor<T extends Context>(o: T): (source: string, cont
       throw new TypeError('missing context')
     }
 
-    return computed(() => adhoc(ctx ?? o))
+    return computed(() => adhoc(unwrapRefs(ctx ?? o)))
   }
 }
 
@@ -119,14 +119,14 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
   // }
 
-  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals } = comp(activeContext, attributes as ToRefs<A>)
-  addActiveContext(compGlobals)
+  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals } = comp(attributes as ToRefs<A>, activeContext)
+  addActiveContext(compGlobals ?? {})
   if (name !== element.tag) {
     throw new Error(`[sciux laplace] component <${element.tag}> does not match <${name}>`)
   }
 
   const oldContext = activeContext
-  addActiveContext(provides)
+  addActiveContext(provides ?? {})
   console.log('activeContext:', activeContext)
   const node = setup(
     () => renderRoots(element.children)
@@ -163,6 +163,7 @@ export function renderNode(node: BaseNode): Node | Node[] {
     return renderValue((node as ValueNode).value)
   } else if (node.type === NodeType.ELEMENT) {
     const elementNode = node as ElementNode
+    const originalAttrs = elementNode.attributes
     let flowAttrs = elementNode.attributes.filter(attr => attr.name.startsWith('#'))
 
     let result: Node | Node[] | null = null
@@ -173,7 +174,9 @@ export function renderNode(node: BaseNode): Node | Node[] {
       const { name, value } = flowAttrs[0]
       const flow = flows.get(name.slice(1))
       if (flow && flow.type === 'pre') {
-        (node as ElementNode).attributes, flowAttrs = (node as ElementNode).attributes.filter(attr => attr.name !== name)
+        console.error(name, (node as ElementNode).attributes.filter(attr => attr.name !== name));
+        flowAttrs = (node as ElementNode).attributes = (node as ElementNode).attributes.filter(attr => attr.name !== name)
+        console.error(node, flowAttrs)
         result = flow.flow(value, node, renderNode)
       }
     }
@@ -187,6 +190,7 @@ export function renderNode(node: BaseNode): Node | Node[] {
         }
       }
     }
+    (node as ElementNode).attributes = originalAttrs;
     return result!
   }
   throw new Error('Unreachable')

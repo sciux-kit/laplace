@@ -8,12 +8,12 @@ export type Component<
   T extends string,
   A extends Record<string, unknown>,
   C extends Context = {}
-  > = (context: C, attrs: ToRefs<A>) => {
+  > = (attrs: ToRefs<A>, context: C) => {
   name: T,
-  attrs: Type<A>,
+  attrs?: Type<A>,
   setup: ComponentSetup,
-  provides: Record<string, Ref<unknown>>
-  globals: Record<string, Ref<unknown>>
+  provides?: Record<string, Ref<unknown>>
+  globals?: Record<string, Ref<unknown>>
 }
 
 export function defineComponent<T extends string, A extends Record<string, unknown>, C extends Context = {}>(comp: Component<T, A, C>) {

@@ -2,7 +2,7 @@ import { BaseNode } from "./parser"
 
 type PreFlow = {
   type: 'pre',
-  flow: (value: string, source: BaseNode | BaseNode[], render: (node: BaseNode) => Node | Node[]) => Node | Node[]
+  flow: (value: string, source: BaseNode, render: (node: BaseNode) => Node | Node[]) => Node | Node[]
 }
 type PostFlow = {
   type: 'post',
