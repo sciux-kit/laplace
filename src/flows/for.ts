@@ -1,17 +1,19 @@
-import { toValue } from "@vue/reactivity";
+import { computed, ComputedRef, effect, toValue, watch } from "@vue/reactivity";
 import { defineFlow } from "../flow";
-import { addActiveContext, createProcessor, getContext } from "../renderer";
+import { activeContext, addActiveContext, Context, createProcessor, getContext, toArray } from "../renderer";
+import patch from "morphdom";
 
-const resolve = (source: string): {
+
+const resolve = (source: string, processor: ReturnType<typeof createProcessor>): {
   key: string,
-  value: Iterable<unknown>
+  value: ComputedRef<Iterable<unknown>>
 } => {
   const [keySource, valueSource] = source.split(' in ').map(s => s.trim())
-  console.log('keySource:', keySource)
-  console.log('valueSource:', valueSource)
-  const parsedValue = createProcessor(getContext())(valueSource)
-  console.log('parsedValue:', parsedValue)
-  const value = (typeof toValue(parsedValue) === 'number' ? Array.from({ length: toValue(parsedValue) as number }, (_, i) => i) : parsedValue) as Iterable<unknown[]>
+
+
+  const parsedValue = processor(valueSource)
+
+  const value = computed(() => (typeof toValue(parsedValue) === 'number' ? Array.from({ length: toValue(parsedValue) as number }, (_, i) => i) : toValue(parsedValue)) as Iterable<unknown[]>)
   // TODO: parse keySource, there we let source as a single variable
   const key = keySource
   return {
@@ -20,21 +22,38 @@ const resolve = (source: string): {
   }
 }
 
-export default defineFlow({
-  name: 'for',
-  type: 'pre',
-  flow(value, source, render) {
-    const { key, value: iterable } = resolve(value)
-    console.log('iterable:', iterable)
-    const nodes = Array.from(iterable).map(item => {
-      console.error('fuck your mother')
-      addActiveContext({
-        [key]: item,
-      })
-      console.log(getContext())
-      return render(source)
-    }).flat()
-    console.log('nodes:', nodes)
-    return nodes
-  },
+export default defineFlow((processor) => {
+  return {
+    name: 'for',
+    type: 'pre',
+    flow(value, source, render) {
+      console.log('execute once!')
+      const { key, value: iterable } = resolve(value, processor)
+      console.log('iterable', iterable.value)
+      const getNodes = () => {
+        const nodes = []
+        for (const item of iterable.value) {
+          addActiveContext({
+            [key]: item,
+          })
+          nodes.push(...toArray(render(source)))
+        }
+        return nodes
+      }
+      const frag = document.createDocumentFragment()
+      frag.append(...getNodes())
+
+      // window.addEventListener('load', () => {
+      //   watch(iterable, (newVal) => {
+      //     console.log('iterable changed', internalContext)
+      //     const cloned = frag.parentElement?.cloneNode()
+      //     getNodes().forEach(node => {
+      //       cloned?.appendChild(node)
+      //     })
+      //     patch(frag.parentElement!, cloned!)
+      //   })
+      // })
+      return frag
+    },
+  }
 })

@@ -67,7 +67,7 @@ export type EventAttr = [typeof EVENT, Event]
 export type Attr = unknown | FlowAttr | EventAttr
 export type Attrs = Record<string, Attr>
 export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: ReturnType<typeof createProcessor>): Attrs {
-  console.log('attrs-source', attrSources)
+
   return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [k, useAttr(k, v, context, processor)])) as Attrs
 }
 export function useAttr(key: string, source: string, context: Context, processor?: ReturnType<typeof createProcessor>) {
@@ -102,19 +102,19 @@ export function renderComp(element: ElementNode) {
 }
 export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode) {
 
-  console.log('origin-attrs:', element.attributes)
+
   const processor = createProcessor(activeContext)
   const originalAttrs = useAttrs(
     Object.fromEntries(element.attributes.map(({ name, value }) => [name, value])),
     unwrapRefs(activeContext),
     processor
   )
-  // console.log('original-attrs:', originalAttrs)
+  // 
   const attributes = resolve(
     getCommonAttrs(originalAttrs)
   )
   // TODO: Compute
-  console.log('attributes:', attributes)
+
   // if (typedAttrs(unwrapRefs(attributes)) instanceof type.errors) {
   //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
   // }
@@ -126,15 +126,20 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   }
 
   const oldContext = activeContext
+  console.log('oldContext', oldContext)
   addActiveContext(provides ?? {})
-  console.log('activeContext:', activeContext)
+
+  console.log('activeContext', activeContext)
+
+  const childrenProcessor = createProcessor(activeContext)
   const node = setup(
-    () => renderRoots(element.children)
+    () => renderRoots(element.children, childrenProcessor)
   )
   effect(() => {
-    console.log('effect')
+
+    console.log('activeContext', activeContext)
     const newNode = setup(
-      () => renderRoots(element.children)
+      () => renderRoots(element.children, childrenProcessor)
     )
     patch(node, newNode)
   })
@@ -156,7 +161,7 @@ export function renderText(text: string) {
   return document.createTextNode(text)
 }
 
-export function renderNode(node: BaseNode): Node | Node[] {
+export function renderNode(node: BaseNode, processor: ReturnType<typeof createProcessor> = createProcessor(activeContext)): Node | Node[] {
   if (node.type === NodeType.TEXT) {
     return renderText((node as TextNode).content)
   } else if (node.type === NodeType.VALUE) {
@@ -172,7 +177,7 @@ export function renderNode(node: BaseNode): Node | Node[] {
       result = renderComp(elementNode)
     } else {
       const { name, value } = flowAttrs[0]
-      const flow = flows.get(name.slice(1))
+      const flow = flows.get(name.slice(1))?.(processor)
       if (flow && flow.type === 'pre') {
         console.error(name, (node as ElementNode).attributes.filter(attr => attr.name !== name));
         flowAttrs = (node as ElementNode).attributes = (node as ElementNode).attributes.filter(attr => attr.name !== name)
@@ -182,7 +187,7 @@ export function renderNode(node: BaseNode): Node | Node[] {
     }
     for (const attr of flowAttrs) {
       const { name, value } = attr
-      const flow = flows.get(name.slice(1))
+      const flow = flows.get(name.slice(1))?.(processor)
       if (flow && flow.type === 'post') {
         const nodes = toArray(result)
         for (const n of nodes) {
@@ -196,10 +201,10 @@ export function renderNode(node: BaseNode): Node | Node[] {
   throw new Error('Unreachable')
 }
 
-export function renderRoots(roots: BaseNode[], initialContext: Context = {}) {
+export function renderRoots(roots: BaseNode[], processor?: ReturnType<typeof createProcessor>) {
   const nodes: Node[] = []
   roots.forEach(root => {
-    const result = renderNode(root)
+    const result = renderNode(root, processor)
     if (Array.isArray(result)) {
       nodes.push(...result)
     } else {
@@ -209,10 +214,10 @@ export function renderRoots(roots: BaseNode[], initialContext: Context = {}) {
   return nodes
 }
 
-export function render(source: string, target?: Node, initialContext: Context = {}) {
+export function render(source: string, target?: Node) {
   const ast = parse(source)
-  console.log('ast:', ast)
-  const nodes = renderRoots(ast.children, initialContext)
-  console.log('nodes:', nodes)
+
+  const nodes = renderRoots(ast.children)
+
   nodes.forEach(node => { if (node) target?.appendChild(node) })
 }

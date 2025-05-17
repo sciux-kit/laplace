@@ -1,4 +1,5 @@
 import { BaseNode } from "./parser"
+import { Context, createProcessor } from "./renderer"
 
 type PreFlow = {
   type: 'pre',
@@ -8,7 +9,7 @@ type PostFlow = {
   type: 'post',
   flow: (value: string, node: Node) => void
 }
-export type Flow = (PreFlow | PostFlow) & {
+export type Flow = (processor: ReturnType<typeof createProcessor>) => (PreFlow | PostFlow) & {
   name: string
 }
 
