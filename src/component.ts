@@ -11,7 +11,7 @@ export type Component<
   > = (attrs: ToRefs<A>, context: C) => {
   name: T,
   attrs?: Type<A>,
-  setup: ComponentSetup,
+  setup?: ComponentSetup,
   provides?: Record<string, Ref<unknown>>
   globals?: Record<string, Ref<unknown>>
 }

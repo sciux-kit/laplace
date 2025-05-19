@@ -55,6 +55,19 @@ export function _createProcessor<T extends Context>(o: T): (source: string, cont
   }
 }
 
+export function createDelegate(
+  processor: ReturnType<typeof createProcessor>,
+) {
+  return (attrs: Attrs, node: Node) => {
+    for (const [key, value] of Object.entries(attrs)) {
+      if (!key.startsWith('@')) continue
+      const event = key.slice(1)
+      const handler = processor!(value as string) as EventListenerOrEventListenerObject
+      node.addEventListener(event, handler)
+    }
+  }
+}
+
 export type AttrSource = string | ExprAttrSource | FlowAttrSource | EventAttrSource
 export type ExprAttrSource = `:${string}`
 export type FlowAttrSource = `#${string}`
@@ -86,7 +99,8 @@ export function useExprAttr(source: ExprAttrSource, context: Context, processor?
 }
 export function useFlowAttr(source: FlowAttrSource, context: Context) {
 }
-export function useEventAttr(source: EventAttrSource, context: Context) {
+export function useEventAttr(source: EventAttrSource, context: Context, processor?: ReturnType<typeof createProcessor>) {
+  // const handler = processor!(source)
 }
 export function getCommonAttrs(attrs: Attrs) {
   return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => !(Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT))))
@@ -100,10 +114,9 @@ export function renderComp(element: ElementNode) {
 
   return _renderComp(comp, element)
 }
-export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode) {
-
-
+export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode): Node | null {
   const processor = createProcessor(activeContext)
+  const delegate = createDelegate(processor)
   const originalAttrs = useAttrs(
     Object.fromEntries(element.attributes.map(({ name, value }) => [name, value])),
     unwrapRefs(activeContext),
@@ -129,15 +142,13 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
 
   addActiveContext(provides ?? {})
 
-
-
+  if (!setup) return null
   const childrenProcessor = createProcessor(activeContext)
   const node = setup(
     () => renderRoots(element.children, childrenProcessor)
   )
+  delegate(originalAttrs, node)
   effect(() => {
-
-
     const newNode = setup(
       () => renderRoots(element.children, childrenProcessor)
     )
