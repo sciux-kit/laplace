@@ -1,7 +1,7 @@
 {
   "name": "sciux-laplace",
   "type": "module",
-  "version": "0.0.1-alpha.3",
+  "version": "0.0.1-alpha.4",
   "description": "Renderer for Sciux Toolkit.",
   "exports": {
     ".": {
@@ -30,10 +30,9 @@
     "dist"
   ],
   "scripts": {
-    "publish": "npm publish",
+    "publish": "npm run build && npm publish",
     "build": "tsup",
     "dev": "tsup --watch",
-    "pub": "pnpm publish",
     "lint": "eslint ."
   },
   "publishConfig": {
