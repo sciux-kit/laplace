@@ -31,7 +31,7 @@ export function unwrapRefs(o: Context): Record<string, unknown> {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, toValue(v)]))
 }
 export function resolve(o: Record<string, unknown>): ToRefs<Record<string, unknown>> {
-  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/^(:|#|@)/, ''), /* computed(() => toValue(v))]) */ ref(toValue(v))]))
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/^(:|#|@)/, ''), computed(() => toValue(v))]))
 }
 
 export function createProcessor(o: Context): (source: string) => unknown {
@@ -132,7 +132,13 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
   // }
 
-  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals } = comp(attributes as ToRefs<A>, activeContext)
+  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals, defaults } = comp(attributes as ToRefs<A>, activeContext)
+  for (const [key, value] of Object.entries(defaults ?? {})) {
+    if (!(key in attributes)) {
+      attributes[key] = computed(() => value)
+    }
+  }
+  
   addActiveContext(compGlobals ?? {})
   if (name !== element.tag) {
     throw new Error(`[sciux laplace] component <${element.tag}> does not match <${name}>`)
