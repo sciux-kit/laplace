@@ -1,6 +1,9 @@
 import { components, defineComponent, flows, render } from '../src'
 import f from '../src/flows/for'
 import { type } from 'arktype'
+import { laplace2domlike } from '../src/dom-compat'
+import { parse } from '../src/parser'
+import { querySelectorXPath } from '../src/selector'
 
 const testAttrs = type({
   test: 'number'
@@ -21,3 +24,7 @@ const source = `
 console.log(components)
 
 render(source, document.getElementById('app')!)
+
+console.log(laplace2domlike(parse(source)))
+console.log(querySelectorXPath(parse(source), "//let"))
+
