@@ -33,6 +33,7 @@
     "publish": "npm run build && npm publish",
     "build": "tsup",
     "dev": "tsup --watch",
+    "devTest": "concurrently --kill-others --hide 0 -- \"tsup --watch\" \"vite test\"",
     "lint": "eslint ."
   },
   "publishConfig": {
@@ -51,8 +52,10 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.27.3",
+    "concurrently": "^9.1.2",
     "eslint": "9.9.0",
     "tsup": "^8.3.6",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5"
   }
 }
