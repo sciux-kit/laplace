@@ -3,7 +3,7 @@ import { Component } from "./component";
 import { type } from 'arktype'
 import patch from 'morphdom'
 import { Flow } from "./flow";
-import { BaseNode, ElementNode, NodeType, parse, TextNode, ValueNode } from "./parser";
+import { BaseNode, ElementNode, FragmentNode, NodeType, parse, TextNode, ValueNode } from "./parser";
 
 export const components = new Map<string, Component<string, any, {}>>()
 export const flows = new Map<string, Flow>()
@@ -214,6 +214,10 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
     }
     (node as ElementNode).attributes = originalAttrs;
     return result!
+  } else if (node.type === NodeType.COMMENT) {
+    return []
+  } else if (node.type === NodeType.FRAGMENT) {
+    return (node as FragmentNode).children.map((x) => renderNode(x)).flatMap((x) => x)
   }
   throw new Error('Unreachable')
 }

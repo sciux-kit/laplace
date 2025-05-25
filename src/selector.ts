@@ -296,7 +296,7 @@ export function querySelectorAll(root: ChildNode | ChildNode[], selector: string
 export function querySelectorXPath(node: DocumentNode, selector: string): ChildNode | null {
   const dom = laplace2domlike(node)
   const result = xpath.select1(selector, dom as unknown as Node)
-  if (result !== null && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
+  if (result && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
     const node = <unknown>result as WithLaplace<unknown>
     return node.laplace as ChildNode
   } else {
@@ -311,13 +311,13 @@ export function querySelectorXPathAll(node: DocumentNode, selector: string): Set
   if (Array.isArray(result)) {
     const set = new Set<ChildNode>();
     for (const i in result) {
-      if (result !== null && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
+      if (result && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
         set.add((<WithLaplace<unknown>><unknown>result).laplace as ChildNode)
       }
     }
     return set;
   }
-  if (result !== null && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
+  if (result && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
     const node = <unknown>result as WithLaplace<unknown>
     const set = new Set<ChildNode>();
     set.add(node.laplace as ChildNode)

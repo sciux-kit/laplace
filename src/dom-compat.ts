@@ -80,9 +80,12 @@ export function laplace2domlike(laplaceNode: DocumentNode): Document {
   const domImpl = new DOMImplementation()
   const document = domImpl.createDocument("laplace", "", null) as WithLaplace<Document>
   document.laplace = laplaceNode
+
+  const fakeRoot = document.createElement("root");
   for (const childNode of laplaceNode.children) {
-    addNodeToDocument(document, document, childNode)
+    addNodeToDocument(document, fakeRoot, childNode)
   }
+  document.appendChild(fakeRoot)
   return document
 }
 
