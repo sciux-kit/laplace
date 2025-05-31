@@ -1,5 +1,6 @@
 import { defineFlow } from "../flow"
-import { Context } from "../renderer"
+import { ElementNode, NodeType } from "../parser"
+import { Context, createProcessor } from "../renderer"
 
 export type AnimationContext = {
   duration: number
@@ -10,12 +11,16 @@ export type AnimationSetup = (progress: number) => boolean
 export type Animation = (
   node: Node,
   animationContext: AnimationContext,
-  context: Context
-) => AnimationSetup
+  processor: ReturnType<typeof createProcessor>,
+) => {
+  validator?: (name: string) => boolean
+  setup: AnimationSetup
+}
 
 export function defineAnimation(animation: Animation) {
   return animation
 }
+export const animations = new Map<string, Animation>()
 
 export type AnimationParams = {
   name: string
@@ -41,10 +46,9 @@ function resolve(source: string, easingResolver: (name: string) => Easing): Anim
   // Parse a single animation string
   const parseSingleAnimation = (str: string): AnimationParams => {
     const [name, duration, easing] = str.split(',')
-    const easingFn = easingResolver(easing)
-    if (!easingFn) {
-      throw new Error(`Easing function ${easing} not found`)
-    }
+    let easingFn: Easing
+    if (!easing) easingFn = (t => t)
+    else easingFn = easingResolver(easing)
     return {
       name,
       duration: Number(duration),
@@ -76,15 +80,47 @@ const flow = defineFlow((processor, ...rest) => {
   return {
     name: `animate.${rest.join('.')}`,
     type: 'post',
-    flow(value, node) {
+    flow(value, node, source) {
       // TODO: Implement
-      const group = resolve(value, processor as (name: string) => Easing)
-      const executer = () => {}
+      console.log(value, node)
+      const original = resolve(value, processor as (name: string) => Easing)
+      const group = Array.isArray(original) ? original : [original]
+      const executer = async () => {
+        console.log('executer', group)
+        for (const animation of group) {
+          const promise = new Promise<void>((resolve) => {
+            const start = performance.now()
+            if (!Array.isArray(animation)) {
+              const anim = animations.get(animation.name)
+              if (!anim) {
+                throw new Error(`Animation ${animation.name} not found`)
+              }
+              console.log('anim', anim)
+              const { setup, validator } = anim(node, {
+                duration: animation.duration,
+                easing: animation.easing ?? (t => t)
+              }, processor)
+              if (validator && !validator((source as ElementNode).tag)) {
+                throw new Error(`Animation ${animation.name} is not valid for ${(source as ElementNode).tag}`)
+              }
+              requestAnimationFrame(function loop() {
+                const progress = (performance.now() - start) / animation.duration
+                  if (setup(progress)) {
+                    resolve()
+                  } else {
+                    requestAnimationFrame(loop)
+                  }
+                })
+            }
+          })
+          await Promise.all([promise])
+        }
+      }
       const [event] = rest
       if (event) {
         node.addEventListener(event, executer)
       } else {
-        node.addEventListener('load', executer)
+        executer()
       }
     }
   }

@@ -7,7 +7,7 @@ type PreFlow = {
 }
 type PostFlow = {
   type: 'post',
-  flow: (value: string, node: Node) => void
+  flow: (value: string, node: Node, source: BaseNode) => void
 }
 export type Flow = (processor: ReturnType<typeof createProcessor>, ...rest: string[]) => (PreFlow | PostFlow) & {
   name: string

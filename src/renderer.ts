@@ -28,7 +28,12 @@ export function toArray<T>(o: MaybeArray<T>): T[] {
 }
 
 export function unwrapRefs(o: Context): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, toValue(v)]))
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => {
+    if (typeof v === 'function') {
+      return [k, v]
+    }
+    return [k, toValue(v)]
+  }))
 }
 export function resolve(o: Record<string, unknown>): ToRefs<Record<string, unknown>> {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/^(:|#|@)/, ''), computed(() => toValue(v))]))
@@ -122,7 +127,6 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
     unwrapRefs(activeContext),
     processor
   )
-  // 
   const attributes = resolve(
     getCommonAttrs(originalAttrs)
   )
@@ -132,7 +136,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
   // }
 
-  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals, defaults } = comp(attributes as ToRefs<A>, activeContext)
+  const { name, attrs: typedAttrs, setup, provides, globals: compGlobals, defaults, animations } = comp(attributes as ToRefs<A>, activeContext)
   for (const [key, value] of Object.entries(defaults ?? {})) {
     if (!(key in attributes)) {
       attributes[key] = computed(() => value)
@@ -147,6 +151,9 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   const oldContext = activeContext
 
   addActiveContext(provides ?? {})
+  addActiveContext(animations ?? {})
+
+  console.log('activeContext', activeContext)
 
   if (!setup) return null
   const childrenProcessor = createProcessor(activeContext)
@@ -202,18 +209,22 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
         result = flow.flow(value, node, renderNode)
       }
     }
+    if (!result) result = renderComp(elementNode)
     for (const attr of flowAttrs) {
       const { name: nameSource, value } = attr
       const [name, ...rest] = nameSource.split('.')
       const flow = flows.get(name.slice(1))?.(processor)
       if (flow && flow.type === 'post') {
         const nodes = toArray(result)
+        console.log('nodes', nodes, result)
         for (const n of nodes) {
-          flow.flow(value, n!)
+          flow.flow(value, n!, node)
         }
       }
+      // console.log(attr)
     }
     (node as ElementNode).attributes = originalAttrs;
+    console.log('result', result)
     return result!
   } else if (node.type === NodeType.COMMENT) {
     return []

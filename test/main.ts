@@ -1,10 +1,24 @@
-import { components, defineComponent, flows, render } from "../src";
+import { components, defineAnimation, defineComponent, flows, render } from "../src";
 import f from "../src/flows/for";
 import { elseFlow, elseIfFlow, ifFlow } from "../src/flows/condition";
+import animationFlow, { animations } from "../src/flows/animation";
 import { type } from "arktype";
 import { laplace2domlike } from "../src/dom-compat";
 import { parse } from "../src/parser";
 import { querySelectorXPath } from "../src/selector";
+
+const move = defineAnimation((node, ctx, processor) => {
+  return {
+    setup(progress) {
+      console.log(node, progress)
+      if (progress >= 1) return true
+      node.style.transform = `translateX(${ctx.easing(progress) * 100}px)`
+      return false
+    }
+  }
+})
+
+animations.set("move", move)
 
 const testAttrs = type({
   test: "number",
@@ -41,6 +55,9 @@ components.set(
           if (child) p.appendChild(child)
         }
         return p;
+      },
+      animations: {
+        move
       }
     };
   }),
@@ -53,9 +70,10 @@ for (const flow of flowsToRegister) {
 flows.set("if", ifFlow);
 flows.set("else", elseFlow);
 flows.set("else-if", elseIfFlow);
+flows.set("animate", animationFlow);
 
 const source = `
-<ppp>
+<ppp #animate="move,1000 move,500">
 <let :c="[1,2,3,4,5]"/>
 <let :x="3" />
 {{ c }}
@@ -75,4 +93,4 @@ console.log(parse(source))
 render(source, document.getElementById("app")!);
 
 console.log(laplace2domlike(parse(source)));
-console.log(querySelectorXPath(parse(source), "/root/"));
+console.log(querySelectorXPath(parse(source), "/"));
