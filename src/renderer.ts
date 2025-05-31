@@ -203,7 +203,8 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
       }
     }
     for (const attr of flowAttrs) {
-      const { name, value } = attr
+      const { name: nameSource, value } = attr
+      const [name, ...rest] = nameSource.split('.')
       const flow = flows.get(name.slice(1))?.(processor)
       if (flow && flow.type === 'post') {
         const nodes = toArray(result)

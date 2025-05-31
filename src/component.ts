@@ -1,6 +1,7 @@
 import { Ref, ToRefs, WatchSource } from "@vue/reactivity"
 import { Type } from 'arktype'
 import { Context } from "./renderer"
+import { Animation } from "./flows/animation"
 
 export type ComponentChildren = () => Node[]
 export type ComponentSetup = (children: ComponentChildren) => Node
@@ -15,6 +16,7 @@ export type Component<
   defaults?: Partial<A>,
   provides?: Record<string, Ref<unknown>>,
   globals?: Record<string, Ref<unknown>>,
+  animations?: Record<string, Animation>
 }
 
 export function defineComponent<T extends string, A extends Record<string, unknown>, C extends Context = {}>(comp: Component<T, A, C>) {

@@ -75,4 +75,4 @@ console.log(parse(source))
 render(source, document.getElementById("app")!);
 
 console.log(laplace2domlike(parse(source)));
-console.log(querySelectorXPath(parse(source), "//let"));
+console.log(querySelectorXPath(parse(source), "/root/"));
