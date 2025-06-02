@@ -3,10 +3,13 @@ import { Component } from "./component";
 import { type } from 'arktype'
 import patch from 'morphdom'
 import { Flow } from "./flow";
-import { BaseNode, ElementNode, FragmentNode, NodeType, parse, TextNode, ValueNode } from "./parser";
+import { BaseNode, ElementNode, FragmentNode, NodeType, parse, ParseOptions, TextMode, TextNode, ValueNode } from "./parser";
 
 export const components = new Map<string, Component<string, any, {}>>()
 export const flows = new Map<string, Flow>()
+export const textModes = new Map<string, TextMode>()
+
+export const textModeResolver = (name: string) => textModes.get(name) ?? TextMode.DATA
 
 export const globals: Context = {}
 export function addGlobals(additional: Context) {
@@ -247,8 +250,11 @@ export function renderRoots(roots: BaseNode[], processor?: ReturnType<typeof cre
   return nodes
 }
 
-export function render(source: string, target?: Node) {
-  const ast = parse(source)
+export function render(source: string, target?: Node, parseOptions: ParseOptions = {}) {
+  const ast = parse(source, {
+    resolver: textModeResolver,
+    ...parseOptions
+  })
 
   const nodes = renderRoots(ast.children)
 
