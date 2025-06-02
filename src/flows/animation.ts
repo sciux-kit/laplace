@@ -1,29 +1,31 @@
 import { defineFlow } from "../flow"
 import { ElementNode, NodeType } from "../parser"
-import { Context, createProcessor } from "../renderer"
+import { Context, createProcessor, toArray } from "../renderer"
 
-export type AnimationContext = {
+export type AnimationContext<Params extends string[]> = {
   duration: number
   easing: Easing
+  params: Params
 }
 export type Easing = (progress: number) => number
 export type AnimationSetup = (progress: number) => boolean
-export type Animation = (
+export type Animation<Params extends string[]> = (
   node: Node,
-  animationContext: AnimationContext,
+  animationContext: AnimationContext<Params>,
   processor: ReturnType<typeof createProcessor>,
 ) => {
   validator?: (name: string) => boolean
   setup: AnimationSetup
 }
 
-export function defineAnimation(animation: Animation) {
+export function defineAnimation<T extends string[] = string[]>(animation: Animation<T>) {
   return animation
 }
-export const animations = new Map<string, Animation>()
+export const animations = new Map<string, Animation<string[]>>()
 
 export type AnimationParams = {
   name: string
+  params?: string[]
   duration: number
   easing?: Easing
 }
@@ -35,6 +37,7 @@ export type AnimationParsedResult = MaybeAnimationGroup | MaybeAnimationGroup[]
  * Parse the source string into a group of animation
  * @example `ani,1000` => { name: 'ani', duration: 1000 }
  * @example `ani,1000,ease-in-out` => { name: 'ani', duration: 1000, easing: 'ease-in-out' }
+ * @example `ani(param1,param2),1000,ease-in-out` => { name: 'ani', params: ['param1', 'param2'], duration: 1000, easing: 'ease-in-out' }
  * @example `ani1,1000 ani2,1000` => [{ name: 'ani1', duration: 1000 }, { name: 'ani2', duration: 1000 }]
  * @example `parallel(ani1,1000 ani2,1000) ani3,500` => [[{name: 'ani1', duration: 1000}, {name: 'ani2', duration: 1000}], {name: 'ani3', duration: 500}]
  * @param source The source string
@@ -45,12 +48,24 @@ function resolve(source: string, easingResolver: (name: string) => Easing): Anim
 
   // Parse a single animation string
   const parseSingleAnimation = (str: string): AnimationParams => {
-    const [name, duration, easing] = str.split(',')
+    // Extract name and parameters if they exist
+    const nameMatch = str.match(/^([^(]+)(?:\(([^)]+)\))?/)
+    if (!nameMatch) throw new Error(`Invalid animation format: ${str}`)
+
+    const [_, name, paramsStr] = nameMatch
+    const params = paramsStr ? paramsStr.split(',').map(p => p.trim()) : undefined
+
+    // Get the rest of the string after name/params
+    const rest = str.slice(nameMatch[0].length)
+    const [duration, easing] = rest.split(',').map(s => s.trim())
+
     let easingFn: Easing
     if (!easing) easingFn = (t => t)
     else easingFn = easingResolver(easing)
+
     return {
       name,
+      params,
       duration: Number(duration),
       easing: easingFn
     }
@@ -81,39 +96,40 @@ const flow = defineFlow((processor, ...rest) => {
     name: `animate.${rest.join('.')}`,
     type: 'post',
     flow(value, node, source) {
-      // TODO: Implement
-      console.log(value, node)
       const original = resolve(value, processor as (name: string) => Easing)
       const group = Array.isArray(original) ? original : [original]
       const executer = async () => {
         console.log('executer', group)
         for (const animation of group) {
-          const promise = new Promise<void>((resolve) => {
-            const start = performance.now()
-            if (!Array.isArray(animation)) {
-              const anim = animations.get(animation.name)
+          const promises: Promise<void>[] = []
+          for (const animItem of toArray(animation)) {
+            const promise = new Promise<void>((resolve) => {
+              const start = performance.now()
+              const anim = animations.get(animItem.name)
               if (!anim) {
-                throw new Error(`Animation ${animation.name} not found`)
+                throw new Error(`Animation ${animItem.name} not found`)
               }
               console.log('anim', anim)
               const { setup, validator } = anim(node, {
-                duration: animation.duration,
-                easing: animation.easing ?? (t => t)
+                duration: animItem.duration,
+                easing: animItem.easing ?? (t => t),
+                params: animItem.params ?? []
               }, processor)
               if (validator && !validator((source as ElementNode).tag)) {
-                throw new Error(`Animation ${animation.name} is not valid for ${(source as ElementNode).tag}`)
+                throw new Error(`Animation ${animItem.name} is not valid for ${(source as ElementNode).tag}`)
               }
               requestAnimationFrame(function loop() {
-                const progress = (performance.now() - start) / animation.duration
-                  if (setup(progress)) {
-                    resolve()
-                  } else {
-                    requestAnimationFrame(loop)
-                  }
-                })
-            }
-          })
-          await Promise.all([promise])
+                const progress = (performance.now() - start) / animItem.duration
+                if (setup(progress)) {
+                  resolve()
+                } else {
+                  requestAnimationFrame(loop)
+                }
+              })
+            })
+            promises.push(promise)
+          }
+          await Promise.all(promises)
         }
       }
       const [event] = rest

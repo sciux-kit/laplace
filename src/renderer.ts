@@ -117,7 +117,8 @@ export function getCommonAttrs(attrs: Attrs) {
 export function renderComp(element: ElementNode) {
   const comp = components.get(element.tag)
   if (!comp) {
-    throw new Error(`[sciux laplace] component <${element.tag}> not found`)
+    console.warn(`[sciux laplace] component <${element.tag}> not found`)
+    return null
   }
 
   return _renderComp(comp, element)
