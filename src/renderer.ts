@@ -39,7 +39,7 @@ export function unwrapRefs(o: Context): Record<string, unknown> {
   }))
 }
 export function resolve(o: Record<string, unknown>): ToRefs<Record<string, unknown>> {
-  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/^(:|#|@)/, ''), computed(() => toValue(v))]))
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/^(:|#|@)/, ''), ref(toValue(v))]))
 }
 
 export function createProcessor(o: Context): (source: string) => unknown {
