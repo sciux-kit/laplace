@@ -12,11 +12,13 @@ export * from '@vue/reactivity'
 
 import { components, flows } from './renderer'
 import letComp from './builtins/let'
-import { ifFlow, elseFlow, elseIfFlow } from './flows'
+import { ifFlow, elseFlow, elseIfFlow, animationFlow } from './flows'
 
 components.set('let', letComp)
 flows.set('if', ifFlow)
 flows.set('else', elseFlow)
 flows.set('else-if', elseIfFlow)
+flows.set('animate', animationFlow)
 
-export { components, flows }
+export * from './renderer'
+export * from './flows'
