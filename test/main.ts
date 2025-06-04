@@ -10,7 +10,7 @@ import { querySelectorXPath } from "../src/selector";
 const move = defineAnimation((node, ctx, processor) => {
   return {
     setup(progress) {
-      console.log(node, progress)
+
       if (progress >= 1) return true
       node.style.transform = `translateX(${ctx.easing(progress) * 100}px)`
       return false
@@ -87,10 +87,10 @@ const source = `
 </ppp>
 `;
 
-console.log(components);
 
-console.log(parse(source))
+
+
 render(source, document.getElementById("app")!);
 
-console.log(laplace2domlike(parse(source)));
-console.log(querySelectorXPath(parse(source), "/"));
+
+

@@ -1,8 +1,9 @@
-import type { BaseNode, ChildNode, DocumentNode, ElementNode, FragmentNode } from './parser'
-import { parse, type PseudoSelector, type Selector } from 'css-what'
-import { NodeType, queryNode } from './parser'
+import { type PseudoSelector, type Selector, parse } from 'css-what'
 import xpath from 'xpath'
-import { laplace2domlike, WithLaplace } from './dom-compat'
+import type { BaseNode, ChildNode, DocumentNode, ElementNode, FragmentNode } from './parser'
+import { NodeType, queryNode } from './parser'
+import type { WithLaplace } from './dom-compat'
+import { laplace2domlike } from './dom-compat'
 
 type ValidNode = ElementNode | FragmentNode | DocumentNode
 
@@ -296,10 +297,11 @@ export function querySelectorAll(root: ChildNode | ChildNode[], selector: string
 export function querySelectorXPath(node: DocumentNode, selector: string): ChildNode | null {
   const dom = laplace2domlike(node)
   const result = xpath.select1(selector, dom as unknown as Node)
-  if (result && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
+  if (result && typeof result !== 'string' && typeof result !== 'number' && typeof result !== 'boolean') {
     const node = <unknown>result as WithLaplace<unknown>
     return node.laplace as ChildNode
-  } else {
+  }
+  else {
     // TODO: Shall we process string | number | boolean? but how?
     return null
   }
@@ -309,20 +311,21 @@ export function querySelectorXPathAll(node: DocumentNode, selector: string): Set
   const dom = laplace2domlike(node)
   const result = xpath.select(selector, dom as unknown as Node)
   if (Array.isArray(result)) {
-    const set = new Set<ChildNode>();
+    const set = new Set<ChildNode>()
     for (const i in result) {
-      if (result && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
+      if (result && typeof result !== 'string' && typeof result !== 'number' && typeof result !== 'boolean') {
         set.add((<WithLaplace<unknown>><unknown>result).laplace as ChildNode)
       }
     }
-    return set;
+    return set
   }
-  if (result && typeof result !== "string" && typeof result !== "number" && typeof result !== "boolean") {
+  if (result && typeof result !== 'string' && typeof result !== 'number' && typeof result !== 'boolean') {
     const node = <unknown>result as WithLaplace<unknown>
-    const set = new Set<ChildNode>();
+    const set = new Set<ChildNode>()
     set.add(node.laplace as ChildNode)
     return set
-  } else {
+  }
+  else {
     // TODO: Shall we process string | number | boolean? but how?
     return new Set()
   }

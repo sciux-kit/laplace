@@ -1,10 +1,9 @@
-export type MutationCallbacks = {
+export interface MutationCallbacks {
   mounted?: (node: Node) => void
   unmounted?: (node: Node) => void
 }
 
 const callbacks = new WeakMap<Node, MutationCallbacks>()
-
 
 const observer = new MutationObserver((m) => {
   m.forEach((mutation) => {
@@ -26,12 +25,13 @@ const observer = new MutationObserver((m) => {
 
 export function setMutationCallback(node: Node | Node[], cbs: MutationCallbacks | undefined): void {
   if (Array.isArray(node)) {
-    node.forEach((n) => setMutationCallback(n, cbs))
+    node.forEach(n => setMutationCallback(n, cbs))
   }
   else {
-    if (cbs) { 
+    if (cbs) {
       callbacks.set(node, cbs)
-    } else {
+    }
+    else {
       callbacks.delete(node)
     }
   }

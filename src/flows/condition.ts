@@ -1,154 +1,159 @@
-import { toValue } from "@vue/reactivity";
-import { defineFlow } from "../flow";
-import { ElementNode, NodeType } from "../parser.ts";
+import { toValue } from '@vue/reactivity'
+import { defineFlow } from '../flow'
+import type { ElementNode } from '../parser.ts'
+import { NodeType } from '../parser.ts'
 
 function hasAttribute(node: ElementNode, attrName: string) {
   for (const attr of node.attributes) {
-    if (attr.name === attrName) return true;
+    if (attr.name === attrName)
+      return true
   }
-  return false;
+  return false
 }
 
 export const ifFlow = defineFlow((processor) => {
   return {
-    name: "if",
-    type: "pre",
+    name: 'if',
+    type: 'pre',
     flow(value, source, render) {
-      console.log("flowing!")
-      const condition = processor(value);
+      const condition = processor(value)
       if (toValue(condition)) {
-        return render(source);
+        return render(source)
       }
-      return [];
+      return []
     },
-  };
-});
+  }
+})
 
 export const elseIfFlow = defineFlow((processor) => {
   return {
-    name: "else-if",
-    type: "pre",
+    name: 'else-if',
+    type: 'pre',
     flow(value, source, render) {
-      console.assert(source.parent !== undefined);
-      const condition = toValue(processor(value));
+      console.assert(source.parent !== undefined)
+      const condition = toValue(processor(value))
 
       // Now try to find the if-else chain...
-      let child_idx = -1;
+      let child_idx = -1
       for (const [idx, value] of source.parent!.children.entries()) {
         if (value === source) {
-          child_idx = idx;
+          child_idx = idx
         }
       }
 
       // 1. Find the head `if`.
-      let if_idx = -1;
+      let if_idx = -1
       for (let i = 1; i <= child_idx; i++) {
-        const sus = source.parent!.children[child_idx-i];
+        const sus = source.parent!.children[child_idx - i]
         if (sus.type === NodeType.ELEMENT) {
           // Do we have if? Do we have if? Do we have if?
-          if (hasAttribute(sus, "#if")) {
+          if (hasAttribute(sus, '#if')) {
             // Yoshi! We found it.
-            if_idx = child_idx-i;
-            break;
-          } else if (!hasAttribute(sus, "#else-if")) {
-            // Orphaned.
-            break;
+            if_idx = child_idx - i
+            break
           }
-        } else if (sus.type !== NodeType.COMMENT) {
+          else if (!hasAttribute(sus, '#else-if')) {
+            // Orphaned.
+            break
+          }
+        }
+        else if (sus.type !== NodeType.COMMENT) {
           // Weird...?
-          break;
+          break
         }
       }
 
       if (if_idx === -1) {
-        throw new Error("Orphaned else-if element", { cause: source })
+        throw new Error('Orphaned else-if element', { cause: source })
       }
 
       // 2. Check if senpais are all unsatisfied.
       for (let i = if_idx; i < child_idx; i++) {
         // 100% sure it is element node if code executed to here.
-        const node = source.parent!.children[i] as ElementNode;
-        let condition = false;
+        const node = source.parent!.children[i] as ElementNode
+        let condition = false
         for (const attr of node.attributes) {
-          if (attr.name === "#if" || attr.name === "#else-if") {
+          if (attr.name === '#if' || attr.name === '#else-if') {
             condition = <boolean>toValue(processor(attr.value))
-            break;
+            break
           }
         }
         // Someone succeeded! Time to have a break.
         if (condition) {
-          return [];
+          return []
         }
       }
 
       // 3. No one succeeded? That's bad.
-      if (condition) return render(source);
+      if (condition)
+        return render(source)
 
-      return [];
-    }
+      return []
+    },
   }
 })
 
 // The else flow is equalivent to else-if but condition is always true.
 export const elseFlow = defineFlow((processor) => {
   return {
-    name: "else",
-    type: "pre",
+    name: 'else',
+    type: 'pre',
     flow(_value, source, render) {
-      console.assert(source.parent !== undefined);
+      console.assert(source.parent !== undefined)
 
       // Now try to find the if-else chain...
-      let child_idx = -1;
+      let child_idx = -1
       for (const [idx, value] of source.parent!.children.entries()) {
         if (value === source) {
-          child_idx = idx;
+          child_idx = idx
         }
       }
 
       // 1. Find the head `if`.
-      let if_idx = -1;
+      let if_idx = -1
       for (let i = 1; i <= child_idx; i++) {
-        const sus = source.parent!.children[child_idx-i];
+        const sus = source.parent!.children[child_idx - i]
         if (sus.type === NodeType.ELEMENT) {
           // Do we have if? Do we have if? Do we have if?
-          if (hasAttribute(sus, "#if")) {
+          if (hasAttribute(sus, '#if')) {
             // Yoshi! We found it.
-            if_idx = child_idx-i;
-            break;
-          } else if (!hasAttribute(sus, "#else-if")) {
-            // Orphaned.
-            break;
+            if_idx = child_idx - i
+            break
           }
-        } else if (sus.type !== NodeType.COMMENT) {
+          else if (!hasAttribute(sus, '#else-if')) {
+            // Orphaned.
+            break
+          }
+        }
+        else if (sus.type !== NodeType.COMMENT) {
           // Weird...?
-          break;
+          break
         }
       }
 
       if (if_idx === -1) {
-        throw new Error("Orphaned else-if element", { cause: source })
+        throw new Error('Orphaned else-if element', { cause: source })
       }
 
       // 2. Check if senpais are all unsatisfied.
       for (let i = if_idx; i < child_idx; i++) {
         // 100% sure it is element node if code executed to here.
-        const node = source.parent!.children[i] as ElementNode;
-        let condition = false;
+        const node = source.parent!.children[i] as ElementNode
+        let condition = false
         for (const attr of node.attributes) {
-          if (attr.name === "#if" || attr.name === "#else-if") {
+          if (attr.name === '#if' || attr.name === '#else-if') {
             condition = <boolean>toValue(processor(attr.value))
-            break;
+            break
           }
         }
         // Someone succeeded! Time to have a break.
         if (condition) {
-          return [];
+          return []
         }
       }
 
       // 3. Render if no one succeeded.
-      return render(source);
-    }
+      return render(source)
+    },
   }
 })
-

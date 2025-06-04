@@ -1,8 +1,10 @@
-import { defineFlow } from "../flow"
-import { ElementNode, NodeType } from "../parser"
-import { Context, createProcessor, toArray } from "../renderer"
+import { defineFlow } from '../flow'
+import type { ElementNode } from '../parser'
+import { NodeType } from '../parser'
+import type { createProcessor } from '../renderer'
+import { Context, toArray } from '../renderer'
 
-export type AnimationContext<Params extends string[]> = {
+export interface AnimationContext<Params extends string[]> {
   duration: number
   easing: Easing
   params: Params
@@ -23,7 +25,7 @@ export function defineAnimation<T extends string[] = string[]>(animation: Animat
 }
 export const animations = new Map<string, Animation<string[]>>()
 
-export type AnimationParams = {
+export interface AnimationParams {
   name: string
   params?: string[]
   duration: number
@@ -50,7 +52,8 @@ function resolve(source: string, easingResolver: (name: string) => Easing): Anim
   const parseSingleAnimation = (str: string): AnimationParams => {
     // Extract name and parameters if they exist
     const nameMatch = str.match(/^([^(]+)(?:\(([^)]+)\))?/)
-    if (!nameMatch) throw new Error(`Invalid animation format: ${str}`)
+    if (!nameMatch)
+      throw new Error(`Invalid animation format: ${str}`)
 
     const [_, name, paramsStr] = nameMatch
     const params = paramsStr ? paramsStr.split(',').map(p => p.trim()) : undefined
@@ -60,14 +63,15 @@ function resolve(source: string, easingResolver: (name: string) => Easing): Anim
     const [duration, easing] = rest.split(',').map(s => s.trim())
 
     let easingFn: Easing
-    if (!easing) easingFn = (t => t)
+    if (!easing)
+      easingFn = t => t
     else easingFn = easingResolver(easing)
 
     return {
       name,
       params,
       duration: Number(duration),
-      easing: easingFn
+      easing: easingFn,
     }
   }
 
@@ -78,7 +82,7 @@ function resolve(source: string, easingResolver: (name: string) => Easing): Anim
   }
 
   // Process each part of the source
-  return sourceGroup.map(part => {
+  return sourceGroup.map((part) => {
     if (part.startsWith('parallel(')) {
       return parseParallel(part)
     }
@@ -99,7 +103,6 @@ const flow = defineFlow((processor, ...rest) => {
       const original = resolve(value, processor as (name: string) => Easing)
       const group = Array.isArray(original) ? original : [original]
       const executer = async () => {
-        console.log('executer', group)
         for (const animation of group) {
           const promises: Promise<void>[] = []
           for (const animItem of toArray(animation)) {
@@ -109,11 +112,11 @@ const flow = defineFlow((processor, ...rest) => {
               if (!anim) {
                 throw new Error(`Animation ${animItem.name} not found`)
               }
-              console.log('anim', anim)
+
               const { setup, validator } = anim(node, {
                 duration: animItem.duration,
                 easing: animItem.easing ?? (t => t),
-                params: animItem.params ?? []
+                params: animItem.params ?? [],
               }, processor)
               if (validator && !validator((source as ElementNode).tag)) {
                 throw new Error(`Animation ${animItem.name} is not valid for ${(source as ElementNode).tag}`)
@@ -122,7 +125,8 @@ const flow = defineFlow((processor, ...rest) => {
                 const progress = (performance.now() - start) / animItem.duration
                 if (setup(progress)) {
                   resolve()
-                } else {
+                }
+                else {
                   requestAnimationFrame(loop)
                 }
               })
@@ -135,10 +139,11 @@ const flow = defineFlow((processor, ...rest) => {
       const [event] = rest
       if (event) {
         node.addEventListener(event, executer)
-      } else {
+      }
+      else {
         executer()
       }
-    }
+    },
   }
 })
 

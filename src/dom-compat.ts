@@ -1,6 +1,8 @@
-import { Document, Node, Text, Element, Attr, DOMImplementation, CDATASection, Comment, DocumentFragment } from '@xmldom/xmldom'
-import { NodeType, ChildNode, DocumentNode } from './parser'
-import { BaseNode } from "./index.ts"
+import type { Attr, CDATASection, Comment, Document, DocumentFragment, Element, Node, Text } from '@xmldom/xmldom'
+import { DOMImplementation } from '@xmldom/xmldom'
+import type { ChildNode, DocumentNode } from './parser'
+import { NodeType } from './parser'
+import type { BaseNode } from './index.ts'
 
 export type WithLaplace<T> = T & { laplace: BaseNode }
 
@@ -23,12 +25,15 @@ function addNodeToDocument(document: Document, parent: Node, node: ChildNode) {
       for (const attribute of node.attributes) {
         let attr: WithLaplace<Attr>
         if (attribute.name.startsWith('#')) {
-          attr = document.createAttributeNS("flow", attribute.name.substring(1)) as WithLaplace<Attr>
-        } else if (attribute.name.startsWith('@')) {
-          attr = document.createAttributeNS("event", attribute.name.substring(1)) as WithLaplace<Attr>
-        } else if (attribute.name.startsWith(':')) {
-          attr = document.createAttributeNS("expr", attribute.name.substring(1)) as WithLaplace<Attr>
-        } else {
+          attr = document.createAttributeNS('flow', attribute.name.substring(1)) as WithLaplace<Attr>
+        }
+        else if (attribute.name.startsWith('@')) {
+          attr = document.createAttributeNS('event', attribute.name.substring(1)) as WithLaplace<Attr>
+        }
+        else if (attribute.name.startsWith(':')) {
+          attr = document.createAttributeNS('expr', attribute.name.substring(1)) as WithLaplace<Attr>
+        }
+        else {
           attr = document.createAttribute(attribute.name) as WithLaplace<Attr>
         }
         attr.laplace = attribute
@@ -43,7 +48,7 @@ function addNodeToDocument(document: Document, parent: Node, node: ChildNode) {
     } break
 
     case NodeType.DIRECTIVE: {
-      throw Error("unreachable")
+      throw new Error('unreachable')
       // TODO: What is directive node?
     } break
 
@@ -78,14 +83,13 @@ function addNodeToDocument(document: Document, parent: Node, node: ChildNode) {
 
 export function laplace2domlike(laplaceNode: DocumentNode): Document {
   const domImpl = new DOMImplementation()
-  const document = domImpl.createDocument("laplace", "", null) as WithLaplace<Document>
+  const document = domImpl.createDocument('laplace', '', null) as WithLaplace<Document>
   document.laplace = laplaceNode
 
-  const fakeRoot = document.createElement("root");
+  const fakeRoot = document.createElement('root')
   for (const childNode of laplaceNode.children) {
     addNodeToDocument(document, fakeRoot, childNode)
   }
   document.appendChild(fakeRoot)
   return document
 }
-

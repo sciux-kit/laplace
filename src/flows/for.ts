@@ -1,15 +1,15 @@
-import { computed, ComputedRef, effect, toValue, watch } from "@vue/reactivity";
-import { defineFlow } from "../flow";
-import { activeContext, addActiveContext, Context, createProcessor, getContext, toArray } from "../renderer";
-import patch from "morphdom";
+import type { ComputedRef } from '@vue/reactivity'
+import { computed, effect, toValue, watch } from '@vue/reactivity'
+import patch from 'morphdom'
+import { defineFlow } from '../flow'
+import type { createProcessor } from '../renderer'
+import { Context, activeContext, addActiveContext, getContext, toArray } from '../renderer'
 
-
-const resolve = (source: string, processor: ReturnType<typeof createProcessor>): {
-  key: string,
+function resolve(source: string, processor: ReturnType<typeof createProcessor>): {
+  key: string
   value: ComputedRef<Iterable<unknown>>
-} => {
+} {
   const [keySource, valueSource] = source.split(' in ').map(s => s.trim())
-
 
   const parsedValue = processor(valueSource)
 
@@ -27,7 +27,6 @@ export default defineFlow((processor) => {
     name: 'for',
     type: 'pre',
     flow(value, source, render) {
-
       const { key, value: iterable } = resolve(value, processor)
 
       const getNodes = () => {
