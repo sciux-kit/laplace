@@ -75,7 +75,7 @@ flows.set('animate', animationFlow)
 
 const source = `
 <let :x="1"/>
-<ppp @click="x++">click me</ppp>
+<ppp @click="x++" #animate:click="move,1000">click me</ppp>
 {{ x }}
 `
 

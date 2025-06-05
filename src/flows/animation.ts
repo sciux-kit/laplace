@@ -50,27 +50,39 @@ function resolve(source: string, easingResolver: (name: string) => Easing): Anim
 
   // Parse a single animation string
   const parseSingleAnimation = (str: string): AnimationParams => {
-    // Extract name and parameters if they exist
-    const nameMatch = str.match(/^([^(]+)(?:\(([^)]+)\))?/)
+    // First split by comma to separate animation part from duration and easing
+    const parts = str.split(',')
+    if (parts.length < 2)
+      throw new Error(`Invalid animation arguments length: ${str}`)
+
+    // Get the last part as duration
+    const duration = Number(parts[parts.length - 1])
+    if (Number.isNaN(duration))
+      throw new Error(`Invalid duration: ${parts[parts.length - 1]}`)
+
+    // Get the second last part as easing if it exists
+    const easing = parts.length > 2 ? parts[parts.length - 2] : ''
+
+    // Get the animation part (name and params)
+    const animPart = parts.slice(0, parts.length - (easing ? 2 : 1)).join(',')
+
+    // Parse name and params
+    const nameMatch = animPart.match(/^([^(]+)(?:\(([^)]*)\))?$/)
     if (!nameMatch)
       throw new Error(`Invalid animation format: ${str}`)
 
     const [_, name, paramsStr] = nameMatch
-    const params = paramsStr ? paramsStr.split(',').map(p => p.trim()) : undefined
-
-    // Get the rest of the string after name/params
-    const rest = str.slice(nameMatch[0].length)
-    const [duration, easing] = rest.split(',').map(s => s.trim())
+    const params = paramsStr ? paramsStr.split(',').map(p => p.trim()).filter(Boolean) : undefined
 
     let easingFn: Easing
-    if (!easing)
+    if (!easing || easing === '')
       easingFn = t => t
     else easingFn = easingResolver(easing)
 
     return {
       name,
       params,
-      duration: Number(duration),
+      duration,
       easing: easingFn,
     }
   }
