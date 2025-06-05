@@ -1,5 +1,5 @@
-import type { MaybeRef, Ref, ToRefs } from '@vue/reactivity'
-import { WatchSource, computed, effect, ref, toRef, toRefs, toValue, unref } from '@vue/reactivity'
+import type { MaybeRef, Reactive, Ref, ToRefs } from '@vue/reactivity'
+import { WatchSource, computed, effect, reactive, ref, toRef, toRefs, toValue, unref } from '@vue/reactivity'
 import { type } from 'arktype'
 import patch from 'morphdom'
 import type { Component } from './component'
@@ -14,19 +14,33 @@ export const textModes = new Map<string, TextMode>()
 
 export const textModeResolver = (name: string) => textModes.get(name) ?? TextMode.DATA
 
-export const globals: Context = {}
+export const globals: Context = reactive({})
 export function addGlobals(additional: Context) {
   Object.assign(globals, additional)
 }
 
-export type Context = Record<string, MaybeRef<unknown>>
+export type Context = Reactive<Record<string, unknown>>
 // eslint-disable-next-line import/no-mutable-exports
-export let activeContext: Context = {}
+export let activeContext: Context = reactive({})
+export function setContext(ctx: Context) {
+  activeContext = ctx
+}
+export function mergeContext(target: Context, from: Context): Context {
+  return reactive(Object.assign(toRefs(target), toRefs(from)))
+}
 export function addActiveContext(additional: Context) {
-  activeContext = { ...activeContext, ...additional }
+  activeContext = mergeContext(activeContext, additional)
 }
 export function getContext() {
   return activeContext
+}
+
+export function runInContext<T>(ctx: Context, fn: () => T): T {
+  const oldContext = activeContext
+  setContext(ctx)
+  const result = fn()
+  setContext(oldContext)
+  return result
 }
 
 export type MaybeArray<T> = T | T[]
@@ -64,7 +78,7 @@ export function _createProcessor<T extends Context>(o: T): (source: string, cont
       throw new TypeError('missing context')
     }
 
-    return ref(adhoc(unwrapRefs(ctx ?? o)))
+    return adhoc(ctx ?? o)
   }
 }
 
@@ -149,47 +163,45 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
   // }
 
-  const { name, attrs: _typedAttrs, setup, provides, globals: compGlobals, defaults, animations } = comp(attributes as ToRefs<A>, activeContext)
+  const { name, attrs: _typedAttrs, setup, provides, globals: compGlobals, defaults } = comp(attributes as ToRefs<A>, activeContext)
   for (const [key, value] of Object.entries(defaults ?? {})) {
     if (!(key in attributes)) {
       attributes[key] = computed(() => value)
     }
   }
 
-  addActiveContext(compGlobals ?? {})
+  addActiveContext(reactive(compGlobals ?? {}))
   if (name !== element.tag) {
     throw new Error(`[sciux laplace] component <${element.tag}> does not match <${name}>`)
   }
 
   const oldContext = activeContext
 
-  addActiveContext(provides ?? {})
-  addActiveContext(animations ?? {})
-
-  if (!setup)
-    return null
-  const childrenProcessor = createProcessor(activeContext)
-  const node = setup(
-    () => renderRoots(element.children, childrenProcessor),
-  )
-  console.log('originalAttrs', originalAttrs, element.attributes)
-  delegate(originalAttrs, node)
-  effect(() => {
-    const newNode = setup(
+  return runInContext(mergeContext(getContext(), reactive(provides ?? {})), () => {
+    if (!setup)
+      return null
+    const childrenProcessor = createProcessor(activeContext)
+    const node = setup(
       () => renderRoots(element.children, childrenProcessor),
     )
-    patch(node, newNode)
-  })
-  activeContext = oldContext
+    delegate(originalAttrs, node)
+    effect(() => {
+      const newNode = setup(
+        () => renderRoots(element.children, childrenProcessor),
+      )
+      patch(node, newNode)
+    })
+    activeContext = oldContext
 
-  return node
+    return node
+  })
 }
 
 export function renderValue(value: string) {
   const interalContext = getContext()
-  const node = document.createTextNode((createProcessor(unwrapRefs(interalContext))(value) as Ref).value.toString())
+  const node = document.createTextNode(((createProcessor(interalContext)(value) as any).toString()))
   effect(() => {
-    node.textContent = (createProcessor(unwrapRefs(interalContext))(value) as Ref).value.toString()
+    node.textContent = (createProcessor(interalContext)(value) as any).toString()
   })
   return node
 }

@@ -16,9 +16,8 @@ export type Component<
   attrs?: Type<A>
   setup?: ComponentSetup
   defaults?: Partial<A>
-  provides?: Record<string, Ref<unknown>>
-  globals?: Record<string, Ref<unknown>>
-  animations?: Record<string, Animation<string[]>>
+  provides?: Record<string, unknown>
+  globals?: Record<string, unknown>
 }
 
 // eslint-disable-next-line ts/no-empty-object-type
