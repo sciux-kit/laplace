@@ -1,96 +1,82 @@
-import { components, defineAnimation, defineComponent, flows, render } from "../src";
-import f from "../src/flows/for";
-import { elseFlow, elseIfFlow, ifFlow } from "../src/flows/condition";
-import animationFlow, { animations } from "../src/flows/animation";
-import { type } from "arktype";
-import { laplace2domlike } from "../src/dom-compat";
-import { parse } from "../src/parser";
-import { querySelectorXPath } from "../src/selector";
+import { type } from 'arktype'
+import { components, defineAnimation, defineComponent, flows, render } from '../src'
+import f from '../src/flows/for'
+import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
+import animationFlow, { animations } from '../src/flows/animation'
+import { laplace2domlike } from '../src/dom-compat'
+import { parse } from '../src/parser'
+import { querySelectorXPath } from '../src/selector'
 
 const move = defineAnimation((node, ctx, processor) => {
   return {
     setup(progress) {
-
-      if (progress >= 1) return true
+      if (progress >= 1)
+        return true
       node.style.transform = `translateX(${ctx.easing(progress) * 100}px)`
       return false
-    }
+    },
   }
 })
 
-animations.set("move", move)
+animations.set('move', move)
 
 const testAttrs = type({
-  test: "number",
-});
+  test: 'number',
+})
 
 const letAttrs = type({
-  name: "string",
-  value: "unknown",
-});
+  name: 'string',
+  value: 'unknown',
+})
 
-const flowsToRegister = [f, ifFlow, elseIfFlow, elseFlow];
+const flowsToRegister = [f, ifFlow, elseIfFlow, elseFlow]
 
 components.set(
-  "br",
+  'br',
   defineComponent((attrs) => {
     return {
-      name: "br",
-      attrs: type("object"),
-      globals: {}
-    };
+      name: 'br',
+      attrs: type('object'),
+      globals: {},
+    }
   }),
-);
+)
 
 components.set(
-  "ppp",
+  'ppp',
   defineComponent((attrs) => {
     return {
-      name: "ppp",
-      attrs: type("object"),
+      name: 'ppp',
+      attrs: type('object'),
       globals: {},
       setup(children) {
-        const p = document.createElement("p")
+        const p = document.createElement('p')
         for (const child of children()) {
-          if (child) p.appendChild(child)
+          if (child)
+            p.appendChild(child)
         }
-        return p;
+        return p
       },
       animations: {
-        move
-      }
-    };
+        move,
+      },
+    }
   }),
-);
+)
 
 for (const flow of flowsToRegister) {
-  flows.set(flow.name, flow);
+  flows.set(flow.name, flow)
 }
 
-flows.set("if", ifFlow);
-flows.set("else", elseFlow);
-flows.set("else-if", elseIfFlow);
-flows.set("animate", animationFlow);
+flows.set('if', ifFlow)
+flows.set('else', elseFlow)
+flows.set('else-if', elseIfFlow)
+flows.set('animate', animationFlow)
 
 const source = `
-<ppp #animate="move,1000 move,500">
-<let :c="[1,2,3,4,5]"/>
-<let :x="3" />
-{{ c }}
-<ppp #if="false">
+<let :x="1"/>
+<ppp @click="x++">click me</ppp>
 {{ x }}
-</ppp><ppp #else-if="false">
-  what
-</ppp><ppp #else>
-2 {{ x }}
-</ppp>
-</ppp>
-`;
+`
 
-
-
-
-render(source, document.getElementById("app")!);
-
-
-
+render(source, document.getElementById('app')!)

@@ -1,5 +1,5 @@
 import type { MaybeRef, Ref, ToRefs } from '@vue/reactivity'
-import { WatchSource, computed, effect, ref, toRef, toRefs, toValue } from '@vue/reactivity'
+import { WatchSource, computed, effect, ref, toRef, toRefs, toValue, unref } from '@vue/reactivity'
 import { type } from 'arktype'
 import patch from 'morphdom'
 import type { Component } from './component'
@@ -64,7 +64,7 @@ export function _createProcessor<T extends Context>(o: T): (source: string, cont
       throw new TypeError('missing context')
     }
 
-    return computed(() => adhoc(unwrapRefs(ctx ?? o)))
+    return ref(adhoc(unwrapRefs(ctx ?? o)))
   }
 }
 
@@ -76,8 +76,9 @@ export function createDelegate(
       if (!key.startsWith('@'))
         continue
       const event = key.slice(1)
-      const handler = processor!(value as string) as EventListenerOrEventListenerObject
-      node.addEventListener(event, handler)
+      const wrapped = `function(){ ${value} }`
+      const handler = processor!(wrapped) as EventListenerOrEventListenerObject
+      node.addEventListener(event, unref(handler))
     }
   }
 }
@@ -116,6 +117,7 @@ export function useExprAttr(source: ExprAttrSource, context: Context, processor?
 export function useFlowAttr(_source: FlowAttrSource, _context: Context) {
 }
 export function useEventAttr(_source: EventAttrSource, _context: Context, _processor?: ReturnType<typeof createProcessor>) {
+  return _source
 }
 export function getCommonAttrs(attrs: Attrs) {
   return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => !(Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT))))
@@ -170,6 +172,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   const node = setup(
     () => renderRoots(element.children, childrenProcessor),
   )
+  console.log('originalAttrs', originalAttrs, element.attributes)
   delegate(originalAttrs, node)
   effect(() => {
     const newNode = setup(
