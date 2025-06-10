@@ -37,4 +37,11 @@ export function setMutationCallback(node: Node | Node[], cbs: MutationCallbacks 
   }
 }
 
-observer.observe(document.body, { childList: true, subtree: true })
+export function observe(node: Node | Node[], cbs: MutationCallbacks | undefined): void {
+  if (Array.isArray(node)) {
+    node.forEach(n => observe(n, cbs))
+  }
+  else {
+    observer.observe(node, { childList: true, subtree: true })
+  }
+}
