@@ -6,7 +6,7 @@ import type { Component } from './component'
 import type { Flow } from './flow'
 import type { BaseNode, ElementNode, FragmentNode, ParseOptions, TextNode, ValueNode } from './parser'
 import { NodeType, TextMode, parse } from './parser'
-
+import { convertSnakeToCamel } from './utils'
 // eslint-disable-next-line ts/no-empty-object-type
 export const components = new Map<string, Component<string, any, {}>>()
 export const flows = new Map<string, Flow>()
@@ -109,7 +109,7 @@ export type EventAttr = [typeof EVENT, Event]
 export type Attr = unknown | FlowAttr | EventAttr
 export type Attrs = Record<string, Attr>
 export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: ReturnType<typeof createProcessor>): Attrs {
-  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [k, useAttr(k, v, context, processor)])) as Attrs
+  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [convertSnakeToCamel(k), useAttr(k, v, context, processor)])) as Attrs
 }
 export function useAttr(key: string, source: string, context: Context, processor?: ReturnType<typeof createProcessor>) {
   if (key.startsWith(':')) {

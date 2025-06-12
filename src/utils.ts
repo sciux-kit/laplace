@@ -17,3 +17,8 @@ export default function isPlainObject(obj: any) {
 
   return Object.getPrototypeOf(obj) === proto
 }
+
+export function convertSnakeToCamel(str: string) {
+  // Convert kebab-case to camelCase
+  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())
+}

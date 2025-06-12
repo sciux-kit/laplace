@@ -1,3 +1,5 @@
+/* eslint-disable antfu/consistent-list-newline */
+import { convertSnakeToCamel } from '../utils'
 import type { Easing } from './animation'
 
 const c = 1.701_58
@@ -57,3 +59,15 @@ export const easeBounce: Easing = (x: number): number =>
       : x < 2.5 / d
         ? n * (x - 2.25 / d) ** 2 + 0.9375
         : n * (x - 2.625 / d) ** 2 + 0.984_375
+
+const easingSet: Record<string, Easing> = {
+  easeBack, easeBounce, easeCirc, easeElastic, easeExpo,
+  easeInBack, easeInCirc, easeInCubic, easeInElastic, easeInExpo, easeInQuad,
+  easeInOutBack, easeInOutCirc, easeInOutCubic, easeInOutElastic, easeInOutExpo, easeInOutSine, easeInOutQuad,
+  easeOutBack, easeOutCirc, easeOutCubic, easeOutElastic, easeOutExpo, easeOutSine, easeOutQuad,
+}
+
+export function easingResolver(source: string) {
+  const name = convertSnakeToCamel(source)
+  return easingSet[name]
+}

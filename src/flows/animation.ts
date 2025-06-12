@@ -5,6 +5,7 @@ import type { ElementNode } from '../parser'
 import { NodeType } from '../parser'
 import type { createProcessor } from '../renderer'
 import { Context, getContext, toArray } from '../renderer'
+import { easingResolver as defaultEasingResolver } from './easing'
 
 export interface AnimationContext<Params extends string[]> {
   duration: number
@@ -68,7 +69,7 @@ export function resolveVariable(source: string) {
  * @param source The source string
  * @returns The parsed animation
  */
-function resolve(source: string, easingResolver: (name: string) => Easing): AnimationParsedResult {
+function resolve(source: string, easingResolver: (name: string) => Easing = defaultEasingResolver): AnimationParsedResult {
   const sourceGroup = source.split(' ').filter(Boolean)
 
   // Parse a single animation string
@@ -135,7 +136,7 @@ const flow = defineFlow((processor, ...rest) => {
     name: `animate.${rest.join('.')}`,
     type: 'post',
     flow(value, node, source) {
-      const original = resolve(value, processor as (name: string) => Easing)
+      const original = resolve(value)
       const group = Array.isArray(original) ? original : [original]
       const executer = async () => {
         for (const animation of group) {
