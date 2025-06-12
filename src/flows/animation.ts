@@ -1,8 +1,10 @@
+import type { MaybeRef } from '@vue/reactivity'
+import { isRef } from '@vue/reactivity'
 import { defineFlow } from '../flow'
 import type { ElementNode } from '../parser'
 import { NodeType } from '../parser'
 import type { createProcessor } from '../renderer'
-import { Context, toArray } from '../renderer'
+import { Context, getContext, toArray } from '../renderer'
 
 export interface AnimationContext<Params extends string[]> {
   duration: number
@@ -34,6 +36,27 @@ export interface AnimationParams {
 export type AnimationGroup = AnimationParams[]
 export type MaybeAnimationGroup = AnimationParams | AnimationGroup
 export type AnimationParsedResult = MaybeAnimationGroup | MaybeAnimationGroup[]
+
+export function resolveVariable(source: string) {
+  return defineAnimation((_, { params }, processor) => {
+    const context = getContext()
+    const variable = context[source] as MaybeRef<number>
+    if (!isRef(variable))
+      return { setup: () => false, validator: () => false }
+    const [from, to] = <[number, number]>(params.length !== 2 ? [variable.value, processor(params[0])] : params.map(p => processor(p)))
+    return {
+      validator(name) {
+        return name === source
+      },
+      setup(progress) {
+        variable.value = from + (to - from) * progress
+        if (progress >= 1)
+          return true
+        return false
+      },
+    }
+  })
+}
 
 /**
  * Parse the source string into a group of animation
@@ -120,21 +143,19 @@ const flow = defineFlow((processor, ...rest) => {
           for (const animItem of toArray(animation)) {
             const promise = new Promise<void>((resolve) => {
               const start = performance.now()
-              const anim = animations.get(animItem.name)
-              if (!anim) {
-                throw new Error(`Animation ${animItem.name} not found`)
-              }
+              const anim = animations.get(animItem.name) ?? resolveVariable(animItem.name)
 
+              const easing = animItem.easing ?? (t => t)
               const { setup, validator } = anim(node, {
                 duration: animItem.duration,
-                easing: animItem.easing ?? (t => t),
+                easing,
                 params: animItem.params ?? [],
               }, processor)
               if (validator && !validator((source as ElementNode).tag)) {
                 throw new Error(`Animation ${animItem.name} is not valid for ${(source as ElementNode).tag}`)
               }
               requestAnimationFrame(function loop() {
-                const progress = (performance.now() - start) / animItem.duration
+                const progress = easing((performance.now() - start) / animItem.duration)
                 if (setup(progress)) {
                   resolve()
                 }
