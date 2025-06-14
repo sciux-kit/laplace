@@ -14,6 +14,7 @@ export const textModes = new Map<string, TextMode>()
 
 export const textModeResolver = (name: string) => textModes.get(name) ?? TextMode.DATA
 
+// eslint-disable-next-line import/no-mutable-exports
 export let globals: Context = reactive({})
 export function addGlobals(additional: Context) {
   globals = reactive(Object.assign(toRefs(globals), toRefs(additional)))
