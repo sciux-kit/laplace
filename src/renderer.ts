@@ -14,9 +14,12 @@ export const textModes = new Map<string, TextMode>()
 
 export const textModeResolver = (name: string) => textModes.get(name) ?? TextMode.DATA
 
-export const globals: Context = reactive({})
+export let globals: Context = reactive({})
 export function addGlobals(additional: Context) {
-  Object.assign(globals, additional)
+  globals = reactive(Object.assign(toRefs(globals), toRefs(additional)))
+}
+export function getGlobals() {
+  return globals
 }
 
 export type Context = Reactive<Record<string, unknown>>
@@ -147,6 +150,7 @@ export function renderComp(element: ElementNode) {
   return _renderComp(comp, element)
 }
 export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode): Node | null {
+  addActiveContext(getGlobals())
   const processor = createProcessor(activeContext)
   const delegate = createDelegate(processor)
   const originalAttrs = useAttrs(
@@ -170,7 +174,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
     }
   }
 
-  addActiveContext(reactive(compGlobals ?? {}))
+  addGlobals(reactive(compGlobals ?? {}))
   if (name !== element.tag) {
     throw new Error(`[sciux laplace] component <${element.tag}> does not match <${name}>`)
   }
@@ -198,6 +202,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
 }
 
 export function renderValue(value: string) {
+  addActiveContext(getGlobals())
   const interalContext = getContext()
   const node = document.createTextNode(((createProcessor(interalContext)(value) as any).toString()))
   effect(() => {

@@ -54,6 +54,7 @@ components.set(
         for (const child of children()) {
           if (child)
             p.appendChild(child)
+          p.appendChild(document.createTextNode(attrs.test?.value))
         }
         return p
       },
@@ -74,8 +75,12 @@ flows.set('else-if', elseIfFlow)
 flows.set('animate', animationFlow)
 
 const source = `
-<let :x="1"/>
-<ppp @click="x++" #animate:click="move,1000">click me</ppp>
+<ppp :test="1">
+  <let :x="114514"/>
+</ppp>
+<ppp :test="x">
+</ppp>
+
 {{ x }}
 `
 
