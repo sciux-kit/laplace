@@ -1,5 +1,5 @@
 import { type } from 'arktype'
-import { components, defineAnimation, defineComponent, flows, render } from '../src'
+import { namespaceManager, defineAnimation, defineComponent, flows, render } from '../src'
 import f from '../src/flows/for'
 import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
 import animationFlow, { animations } from '../src/flows/animation'
@@ -31,18 +31,9 @@ const letAttrs = type({
 
 const flowsToRegister = [f, ifFlow, elseIfFlow, elseFlow]
 
-components.set(
-  'br',
-  defineComponent((attrs) => {
-    return {
-      name: 'br',
-      attrs: type('object'),
-      globals: {},
-    }
-  }),
-)
-
-components.set(
+namespaceManager.createNamespace('let')
+namespaceManager.registerComponent(
+  'let',
   'ppp',
   defineComponent((attrs) => {
     return {
@@ -69,17 +60,13 @@ for (const flow of flowsToRegister) {
   flows.set(flow.name, flow)
 }
 
-flows.set('if', ifFlow)
-flows.set('else', elseFlow)
-flows.set('else-if', elseIfFlow)
-flows.set('animate', animationFlow)
-
 const source = `
-<ppp :test="1">
-  <let :x="114514"/>
-</ppp>
-<ppp :test="x">
-</ppp>
+<let :x="114514">
+<let:ppp :test="1">
+</let:ppp>
+<let:ppp :test="x">
+</let:ppp>
+</let>
 
 {{ x }}
 `

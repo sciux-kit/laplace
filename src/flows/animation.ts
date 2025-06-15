@@ -5,6 +5,7 @@ import type { ElementNode } from '../parser'
 import { NodeType } from '../parser'
 import type { createProcessor } from '../renderer'
 import { Context, getContext, toArray } from '../renderer'
+import { namespaceManager } from '../namespace'
 import { easingResolver as defaultEasingResolver } from './easing'
 
 export interface AnimationContext<Params extends string[]> {
@@ -152,7 +153,8 @@ const flow = defineFlow((processor, ...rest) => {
                 easing,
                 params: animItem.params ?? [],
               }, processor)
-              if (validator && !validator((source as ElementNode).tag)) {
+              const { name } = namespaceManager.parseComponentName((source as ElementNode).tag)
+              if (validator && !validator(name)) {
                 throw new Error(`Animation ${animItem.name} is not valid for ${(source as ElementNode).tag}`)
               }
               requestAnimationFrame(function loop() {

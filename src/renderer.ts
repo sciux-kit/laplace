@@ -7,8 +7,9 @@ import type { Flow } from './flow'
 import type { BaseNode, ElementNode, FragmentNode, ParseOptions, TextNode, ValueNode } from './parser'
 import { NodeType, TextMode, parse } from './parser'
 import { convertSnakeToCamel } from './utils'
+import { namespaceManager } from './namespace'
 // eslint-disable-next-line ts/no-empty-object-type
-export const components = new Map<string, Component<string, any, {}>>()
+// export const components = new Map<string, Component<string, any, {}>>()
 export const flows = new Map<string, Flow>()
 export const textModes = new Map<string, TextMode>()
 
@@ -142,9 +143,11 @@ export function getCommonAttrs(attrs: Attrs) {
 }
 
 export function renderComp(element: ElementNode) {
-  const comp = components.get(element.tag)
+  const { namespace, name } = namespaceManager.parseComponentName(element.tag)
+  const comp = namespaceManager.getComponent(namespace, name)
+
   if (!comp) {
-    console.warn(`[sciux laplace] component <${element.tag}> not found`)
+    console.warn(`[sciux laplace] component <${element.tag}> not found in namespace '${namespace}'`)
     return null
   }
 
