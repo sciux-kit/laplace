@@ -1,6 +1,7 @@
 import { type } from 'arktype'
-import { components, defineAnimation, defineComponent, flows, render } from '../src'
+import { root, defineAnimation, defineComponent, flows, render, withSpace } from '../src'
 import f from '../src/flows/for'
+import letBuiltIn from '../src/builtins/let'
 import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
 import animationFlow, { animations } from '../src/flows/animation'
 import { laplace2domlike } from '../src/dom-compat'
@@ -31,7 +32,7 @@ const letAttrs = type({
 
 const flowsToRegister = [f, ifFlow, elseIfFlow, elseFlow]
 
-components.set(
+root.set(
   'br',
   defineComponent((attrs) => {
     return {
@@ -42,28 +43,51 @@ components.set(
   }),
 )
 
-components.set(
-  'ppp',
-  defineComponent((attrs) => {
-    return {
-      name: 'ppp',
-      attrs: type('object'),
-      globals: {},
-      setup(children) {
-        const p = document.createElement('p')
-        for (const child of children()) {
-          if (child)
-            p.appendChild(child)
-          p.appendChild(document.createTextNode(attrs.test?.value))
-        }
-        return p
-      },
-      animations: {
-        move,
-      },
-    }
-  }),
-)
+const ppp = defineComponent((attrs) => {
+  return {
+    name: 'ppp',
+    attrs: type('object'),
+    globals: {},
+    setup(children) {
+      console.log('Heeeeeeelllllloooo pppppppppp!')
+      const p = document.createElement('p')
+      for (const child of children()) {
+        if (child)
+          p.appendChild(child)
+        p.appendChild(document.createTextNode(attrs.test?.value))
+      }
+      return p
+    },
+    animations: {
+      move,
+    },
+  }
+})
+
+const ttt = defineComponent((attrs) => {
+  return {
+    name: 'ttt',
+    attrs: type('object'),
+    globals: {},
+    setup(children) {
+      console.log('Heeeeeeelllllloooo ttttttttttt!')
+      const t = document.createElement('ttt')
+      for (const child of children()) {
+        if (child)
+          t.appendChild(child)
+      }
+      return t
+    },
+  }
+})
+
+const space = new Map()
+space.set('ppp', ppp)
+
+const newTtt = withSpace(ttt, space)
+root.set('ttt', newTtt)
+
+console.log(newTtt({}, {}))
 
 for (const flow of flowsToRegister) {
   flows.set(flow.name, flow)
@@ -75,13 +99,9 @@ flows.set('else-if', elseIfFlow)
 flows.set('animate', animationFlow)
 
 const source = `
-<ppp :test="1">
-  <let :x="114514"/>
-</ppp>
-<ppp :test="x">
-</ppp>
-
-{{ x }}
+<ttt>
+</ttt>
+  <ppp :test="114514"/>
 `
 
 render(source, document.getElementById('app')!)

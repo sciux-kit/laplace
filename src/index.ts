@@ -1,4 +1,4 @@
-import { components, flows } from './renderer'
+import { root, flows } from './renderer'
 import letComp from './builtins/let'
 import { animationFlow, elseFlow, elseIfFlow, ifFlow } from './flows'
 
@@ -14,7 +14,7 @@ export * from './flows'
 
 export * from '@vue/reactivity'
 
-components.set('let', letComp)
+root.set('let', letComp)
 flows.set('if', ifFlow)
 flows.set('else', elseFlow)
 flows.set('else-if', elseIfFlow)

@@ -8,7 +8,8 @@ import type { BaseNode, ElementNode, FragmentNode, ParseOptions, TextNode, Value
 import { NodeType, TextMode, parse } from './parser'
 import { convertSnakeToCamel } from './utils'
 // eslint-disable-next-line ts/no-empty-object-type
-export const components = new Map<string, Component<string, any, {}>>()
+export type ComponentSpace = Map<string, Component<string, any, any>>
+export const root: ComponentSpace = new Map()
 export const flows = new Map<string, Flow>()
 export const textModes = new Map<string, TextMode>()
 
@@ -141,8 +142,8 @@ export function getCommonAttrs(attrs: Attrs) {
   return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => !(Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT))))
 }
 
-export function renderComp(element: ElementNode) {
-  const comp = components.get(element.tag)
+export function renderComp(element: ElementNode, space: ComponentSpace) {
+  const comp = space.get(element.tag)
   if (!comp) {
     console.warn(`[sciux laplace] component <${element.tag}> not found`)
     return null
@@ -168,7 +169,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
   // }
 
-  const { name, attrs: _typedAttrs, setup, provides, globals: compGlobals, defaults } = comp(attributes as ToRefs<A>, activeContext)
+  const { name, attrs: _typedAttrs, setup, provides, globals: compGlobals, defaults, space } = comp(attributes as ToRefs<A>, activeContext)
   for (const [key, value] of Object.entries(defaults ?? {})) {
     if (!(key in attributes)) {
       attributes[key] = computed(() => value)
@@ -187,12 +188,12 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
       return null
     const childrenProcessor = createProcessor(activeContext)
     const node = setup(
-      () => renderRoots(element.children, childrenProcessor),
+      () => renderRoots(element.children, childrenProcessor, space),
     )
     delegate(originalAttrs, node)
     effect(() => {
       const newNode = setup(
-        () => renderRoots(element.children, childrenProcessor),
+        () => renderRoots(element.children, childrenProcessor, space),
       )
       patch(node, newNode)
     })
@@ -216,7 +217,11 @@ export function renderText(text: string) {
   return document.createTextNode(text)
 }
 
-export function renderNode(node: BaseNode, processor: ReturnType<typeof createProcessor> = createProcessor(activeContext)): Node | Node[] {
+export function renderNode(
+  node: BaseNode,
+  processor: ReturnType<typeof createProcessor> = createProcessor(activeContext),
+  space: ComponentSpace,
+): Node | Node[] {
   if (node.type === NodeType.TEXT) {
     return renderText((node as TextNode).content)
   }
@@ -231,7 +236,7 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
     let result: Node | Node[] | null = null
     // Pre-flow
     if (flowAttrs.length <= 0) {
-      result = renderComp(elementNode)
+      result = renderComp(elementNode, space)
     }
     else {
       const { name, value } = flowAttrs[0]
@@ -239,11 +244,11 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
       if (flow && flow.type === 'pre') {
         flowAttrs = (node as ElementNode).attributes = (node as ElementNode).attributes.filter(attr => attr.name !== name)
 
-        result = flow.flow(value, node, renderNode)
+        result = flow.flow(value, node, (node: BaseNode) => renderNode(node, processor, space))
       }
     }
     if (!result)
-      result = renderComp(elementNode)
+      result = renderComp(elementNode, space)
     for (const attr of flowAttrs) {
       const { name: nameSource, value } = attr
       const [name, ...rest] = nameSource.split(':')
@@ -268,15 +273,15 @@ export function renderNode(node: BaseNode, processor: ReturnType<typeof createPr
     return []
   }
   else if (node.type === NodeType.FRAGMENT) {
-    return (node as FragmentNode).children.map(x => renderNode(x)).flatMap(x => x)
+    return (node as FragmentNode).children.map(x => renderNode(x, processor, space)).flatMap(x => x)
   }
   throw new Error('Unreachable')
 }
 
-export function renderRoots(roots: BaseNode[], processor?: ReturnType<typeof createProcessor>) {
+export function renderRoots(roots: BaseNode[], processor?: ReturnType<typeof createProcessor>, space: ComponentSpace = root) {
   const nodes: Node[] = []
   roots.forEach((root) => {
-    const result = renderNode(root, processor)
+    const result = renderNode(root, processor, space)
     if (Array.isArray(result)) {
       nodes.push(...result)
     }

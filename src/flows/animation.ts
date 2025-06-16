@@ -5,7 +5,6 @@ import type { ElementNode } from '../parser'
 import { NodeType } from '../parser'
 import type { MaybeArray, createProcessor } from '../renderer'
 import { Context, getContext, toArray } from '../renderer'
-import { namespaceManager } from '../namespace'
 import { easingResolver as defaultEasingResolver } from './easing'
 
 export interface AnimationContext<Params extends string[]> {
@@ -155,8 +154,7 @@ const flow = defineFlow((processor, ...rest) => {
                   easing,
                   params: animItem.params ?? [],
                 }, processor)
-                const { name } = namespaceManager.parseComponentName((source as ElementNode).tag)
-                if (validator && !validator(name))
+                if (validator && !validator((source as ElementNode).tag))
                   continue
                 requestAnimationFrame(function loop() {
                   const progress = easing((performance.now() - start) / animItem.duration)
