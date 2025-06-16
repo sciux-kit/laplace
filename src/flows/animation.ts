@@ -3,8 +3,9 @@ import { isRef } from '@vue/reactivity'
 import { defineFlow } from '../flow'
 import type { ElementNode } from '../parser'
 import { NodeType } from '../parser'
-import type { createProcessor } from '../renderer'
+import type { MaybeArray, createProcessor } from '../renderer'
 import { Context, getContext, toArray } from '../renderer'
+import { namespaceManager } from '../namespace'
 import { easingResolver as defaultEasingResolver } from './easing'
 
 export interface AnimationContext<Params extends string[]> {
@@ -26,7 +27,7 @@ export type Animation<Params extends string[]> = (
 export function defineAnimation<T extends string[] = string[]>(animation: Animation<T>) {
   return animation
 }
-export const animations = new Map<string, Animation<string[]>>()
+export const animations = new Map<string, MaybeArray<Animation<string[]>>>()
 
 export interface AnimationParams {
   name: string
@@ -145,25 +146,29 @@ const flow = defineFlow((processor, ...rest) => {
             const promise = new Promise<void>((resolve) => {
               const start = performance.now()
               const anim = animations.get(animItem.name) ?? resolveVariable(animItem.name)
+              const anims = toArray(anim)
 
-              const easing = animItem.easing ?? (t => t)
-              const { setup, validator } = anim(node, {
-                duration: animItem.duration,
-                easing,
-                params: animItem.params ?? [],
-              }, processor)
-              if (validator && !validator((source as ElementNode).tag)) {
-                throw new Error(`Animation ${animItem.name} is not valid for ${(source as ElementNode).tag}`)
+              for (const anim of anims) {
+                const easing = animItem.easing ?? (t => t)
+                const { setup, validator } = anim(node, {
+                  duration: animItem.duration,
+                  easing,
+                  params: animItem.params ?? [],
+                }, processor)
+                const { name } = namespaceManager.parseComponentName((source as ElementNode).tag)
+                if (validator && !validator(name))
+                  continue
+                requestAnimationFrame(function loop() {
+                  const progress = easing((performance.now() - start) / animItem.duration)
+                  if (setup(progress)) {
+                    resolve()
+                  }
+                  else {
+                    requestAnimationFrame(loop)
+                  }
+                })
+                break
               }
-              requestAnimationFrame(function loop() {
-                const progress = easing((performance.now() - start) / animItem.duration)
-                if (setup(progress)) {
-                  resolve()
-                }
-                else {
-                  requestAnimationFrame(loop)
-                }
-              })
             })
             promises.push(promise)
           }
