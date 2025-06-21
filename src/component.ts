@@ -2,7 +2,6 @@ import type { Ref, ToRefs } from '@vue/reactivity'
 import { WatchSource } from '@vue/reactivity'
 import type { Type } from 'arktype'
 import type { ComponentSpace, Context } from './renderer'
-import type { Animation } from './flows/animation'
 
 export type ComponentChildren = () => Node[]
 export type ComponentSetup = (children: ComponentChildren) => Node

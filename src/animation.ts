@@ -168,7 +168,6 @@ export function createAnimate(context: Context, source: ElementNode) {
                   attrs,
                   context,
                 })
-                console.log(setup, animItem, anim)
                 if (validator && !validator((source as ElementNode).tag))
                   continue
                 requestAnimationFrame(function loop() {
