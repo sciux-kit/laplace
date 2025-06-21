@@ -87,14 +87,34 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
   // Parse a single animation string
   const parseSingleAnimation = (str: string): AnimationParams => {
     // First split by comma to separate animation part from duration and easing
-    const parts = str.split(',')
+    const parts: string[] = []
+    let inBracketCount: number = 0
+    let item = ''
+    for (const char of str) {
+      if (char === '(') {
+        item += char
+        inBracketCount++
+      }
+      else if (char === ')') {
+        item += char
+        inBracketCount--
+      }
+      else if (char === ',' && inBracketCount === 0) {
+        parts.push(item)
+        item = ''
+      }
+      else {
+        item += char
+      }
+    }
+    console.log(parts)
     if (parts.length < 2)
       throw new Error(`Invalid animation arguments length: ${str}`)
 
     // Get the last part as duration
-    const duration = Number(parts[parts.length - 1])
+    const duration = Number(parts[1])
     if (Number.isNaN(duration))
-      throw new Error(`Invalid duration: ${parts[parts.length - 1]}`)
+      throw new Error(`Invalid duration: ${parts[1]}`)
 
     // Get the second last part as easing if it exists
     const easing = parts.length > 2 ? parts[parts.length - 2] : ''

@@ -107,7 +107,7 @@ flows.set('else-if', elseIfFlow)
 
 const source = `
 <let :y="114514" />
-<ttt @click="console.log('click')" :x="3" $click="y(1000),1000">
+<ttt @click="console.log('click')" :x="3" $click="y(1000,1),1000,easeBounce">
 </ttt>
 {{ y }}
 `
