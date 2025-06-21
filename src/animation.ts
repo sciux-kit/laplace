@@ -1,10 +1,9 @@
-import type { MaybeRef } from '@vue/reactivity'
-import { isRef } from '@vue/reactivity'
-import { defineFlow } from '../flow'
-import type { ElementNode } from '../parser'
-import { NodeType } from '../parser'
-import type { MaybeArray, createProcessor } from '../renderer'
-import { Context, getContext, toArray } from '../renderer'
+/* eslint-disable ts/no-empty-object-type */
+import type { MaybeRef, ToRefs } from '@vue/reactivity'
+import { isRef, reactive, ref, toRaw } from '@vue/reactivity'
+import type { ElementNode } from './parser'
+import { createProcessor, toArray } from './renderer'
+import type { Attrs, Context, MaybeArray } from './renderer'
 import { easingResolver as defaultEasingResolver } from './easing'
 
 export interface AnimationContext<Params extends string[]> {
@@ -12,21 +11,29 @@ export interface AnimationContext<Params extends string[]> {
   easing: Easing
   params: Params
 }
+export interface AnimationCompContext<A extends Record<string, unknown>, C extends Context = {}> {
+  attrs: ToRefs<A>
+  context: C
+}
 export type Easing = (progress: number) => number
 export type AnimationSetup = (progress: number) => boolean
-export type Animation<Params extends string[]> = (
+export type Animation<Params extends string[], A extends Record<string, unknown>, C extends Context = {}> = (
   node: Node,
   animationContext: AnimationContext<Params>,
-  processor: ReturnType<typeof createProcessor>,
+  compContext: AnimationCompContext<A, C>,
 ) => {
   validator?: (name: string) => boolean
   setup: AnimationSetup
 }
 
-export function defineAnimation<T extends string[] = string[]>(animation: Animation<T>) {
+export function defineAnimation<
+  T extends string[] = string[],
+  A extends Record<string, unknown> = {},
+  C extends Context = Context,
+>(animation: Animation<T, A, C>) {
   return animation
 }
-export const animations = new Map<string, MaybeArray<Animation<string[]>>>()
+export const animations = new Map<string, MaybeArray<Animation<string[], any, any>>>()
 
 export interface AnimationParams {
   name: string
@@ -38,16 +45,21 @@ export type AnimationGroup = AnimationParams[]
 export type MaybeAnimationGroup = AnimationParams | AnimationGroup
 export type AnimationParsedResult = MaybeAnimationGroup | MaybeAnimationGroup[]
 
+export const ANIMATION = Symbol('animation')
+export type AnimationAttrSource = `$${string}`
+export type AnimationAttr = [typeof ANIMATION, AnimationParsedResult, string?]
+
 export function resolveVariable(source: string) {
-  return defineAnimation((_, { params }, processor) => {
-    const context = getContext()
-    const variable = context[source] as MaybeRef<number>
-    if (!isRef(variable))
+  return defineAnimation((_, { params }, { context: ctx }) => {
+    const processor = createProcessor(ctx)
+    const variable = toRaw(ctx)[source] as MaybeRef<number>
+    if (!isRef(variable)) {
       return { setup: () => false, validator: () => false }
+    }
     const [from, to] = <[number, number]>(params.length !== 2 ? [variable.value, processor(params[0])] : params.map(p => processor(p)))
     return {
-      validator(name) {
-        return name === source
+      validator() {
+        return true
       },
       setup(progress) {
         variable.value = from + (to - from) * progress
@@ -126,18 +138,17 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
   })
 }
 
-/**
- * Animation flow.
- * @example `#animate="source"` will be executed immediately
- * @example `#animate.click="source"` will be executed when the node is clicked
- */
-const flow = defineFlow((processor, ...rest) => {
-  return {
-    name: `animate.${rest.join('.')}`,
-    type: 'post',
-    flow(value, node, source) {
-      const original = resolve(value)
-      const group = Array.isArray(original) ? original : [original]
+export function useAnimationAttr(key: string, source: AnimationAttrSource): AnimationAttr {
+  return [ANIMATION, resolve(source), key.slice(1)]
+}
+
+export function createAnimate(context: Context, source: ElementNode) {
+  return (attrs: Attrs, node: Node) => {
+    for (const [_, value] of Object.entries(attrs)) {
+      if ((value as AnimationAttr)[0] !== ANIMATION)
+        continue
+      const [_, maybeGroup, eventName] = <AnimationAttr>value
+      const group = Array.isArray(maybeGroup) ? maybeGroup : [maybeGroup]
       const executer = async () => {
         for (const animation of group) {
           const promises: Promise<void>[] = []
@@ -153,7 +164,11 @@ const flow = defineFlow((processor, ...rest) => {
                   duration: animItem.duration,
                   easing,
                   params: animItem.params ?? [],
-                }, processor)
+                }, {
+                  attrs,
+                  context,
+                })
+                console.log(setup, animItem, anim)
                 if (validator && !validator((source as ElementNode).tag))
                   continue
                 requestAnimationFrame(function loop() {
@@ -173,15 +188,12 @@ const flow = defineFlow((processor, ...rest) => {
           await Promise.all(promises)
         }
       }
-      const [event] = rest
-      if (event) {
-        node.addEventListener(event, executer)
+      if (eventName) {
+        node.addEventListener(eventName, executer)
       }
       else {
         executer()
       }
-    },
+    }
   }
-})
-
-export default flow
+}

@@ -1,24 +1,30 @@
 import { type } from 'arktype'
-import { root, defineAnimation, defineComponent, flows, render, withSpace } from '../src'
+import { defineAnimation, defineComponent, flows, render, root, withSpace } from '../src'
 import f from '../src/flows/for'
 import letBuiltIn from '../src/builtins/let'
 import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
-import animationFlow, { animations } from '../src/flows/animation'
+import { animations } from '../src'
 import { laplace2domlike } from '../src/dom-compat'
 import { parse } from '../src/parser'
 import { querySelectorXPath } from '../src/selector'
 
-const move = defineAnimation((node, ctx, processor) => {
+const move = defineAnimation((node, ctx, { attrs }) => {
   return {
     setup(progress) {
-      if (progress >= 1)
+      if (progress >= 1) {
+        console.log(attrs.x.value)
+        attrs.x.value = 333
         return true
+      }
       node.style.transform = `translateX(${ctx.easing(progress) * 100}px)`
+      console.log(node.style.transform)
       return false
+    },
+    validator(name) {
+      return name === 'ttt'
     },
   }
 })
-
 animations.set('move', move)
 
 const testAttrs = type({
@@ -71,7 +77,8 @@ const ttt = defineComponent((attrs) => {
     globals: {},
     setup(children) {
       console.log('Heeeeeeelllllloooo ttttttttttt!')
-      const t = document.createElement('ttt')
+      const t = document.createElement('div')
+      t.textContent = 'Hello' + attrs.x.value
       for (const child of children()) {
         if (child)
           t.appendChild(child)
@@ -96,12 +103,13 @@ for (const flow of flowsToRegister) {
 flows.set('if', ifFlow)
 flows.set('else', elseFlow)
 flows.set('else-if', elseIfFlow)
-flows.set('animate', animationFlow)
+// flows.set('animate', animationFlow)
 
 const source = `
-<ttt>
+<let :y="114514" />
+<ttt @click="console.log('click')" :x="3" $click="y(1000),1000">
 </ttt>
-  <ppp :test="114514"/>
+{{ y }}
 `
 
 render(source, document.getElementById('app')!)

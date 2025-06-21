@@ -1,5 +1,5 @@
 /* eslint-disable antfu/consistent-list-newline */
-import { convertSnakeToCamel } from '../utils'
+import { convertSnakeToCamel } from './utils'
 import type { Easing } from './animation'
 
 const c = 1.701_58

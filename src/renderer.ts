@@ -7,7 +7,9 @@ import type { Flow } from './flow'
 import type { BaseNode, ElementNode, FragmentNode, ParseOptions, TextNode, ValueNode } from './parser'
 import { NodeType, TextMode, parse } from './parser'
 import { convertSnakeToCamel } from './utils'
-// eslint-disable-next-line ts/no-empty-object-type
+import type { AnimationAttr, AnimationAttrSource } from './animation'
+import { createAnimate, useAnimationAttr } from './animation'
+
 export type ComponentSpace = Map<string, Component<string, any, any>>
 export const root: ComponentSpace = new Map()
 export const flows = new Map<string, Flow>()
@@ -61,9 +63,9 @@ export function unwrapRefs(o: Context): Record<string, unknown> {
     return [k, toValue(v)]
   }))
 }
-export function resolve(o: Record<string, unknown>): ToRefs<Record<string, unknown>> {
-  return Object.fromEntries(Object.entries(o).map(([k, v]: [string, MaybeRef]) => [k.replace(/^([:#@])/, ''), ref(v.value ?? v)]))
-}
+// export function resolve(o: Record<string, unknown>): ToRefs<Record<string, unknown>> {
+//   return Object.fromEntries(Object.entries(o).map(([k, v]: [string, MaybeRef]) => [k.replace(/^([:#@])/, ''), ref(v.value ?? v)]))
+// }
 
 export function createProcessor(o: Context): (source: string) => unknown {
   return (source) => {
@@ -87,59 +89,67 @@ export function _createProcessor<T extends Context>(o: T): (source: string, cont
   }
 }
 
-export function createDelegate(
-  processor: ReturnType<typeof createProcessor>,
-) {
-  return (attrs: Attrs, node: Node) => {
-    for (const [key, value] of Object.entries(attrs)) {
-      if (!key.startsWith('@'))
-        continue
-      const event = key.slice(1)
-      const wrapped = `function(){ ${value} }`
-      const handler = processor!(wrapped) as EventListenerOrEventListenerObject
-      node.addEventListener(event, unref(handler))
-    }
-  }
-}
-
 export type AttrSource = string | ExprAttrSource | FlowAttrSource | EventAttrSource
 export type ExprAttrSource = `:${string}`
 export type FlowAttrSource = `#${string}`
 export type EventAttrSource = `@${string}`
 
 export const FLOW = Symbol('flow')
-export type FlowAttr = [typeof FLOW, Flow]
+export type FlowAttr = [typeof FLOW, FlowAttrSource]
 export const EVENT = Symbol('event')
-export type EventAttr = [typeof EVENT, Event]
-export type Attr = unknown | FlowAttr | EventAttr
+export type EventAttr = [typeof EVENT, EventAttrSource, string]
+export type Attr = unknown | FlowAttr | EventAttr | AnimationAttr
 export type Attrs = Record<string, Attr>
 export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: ReturnType<typeof createProcessor>): Attrs {
-  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [convertSnakeToCamel(k), useAttr(k, v, context, processor)])) as Attrs
+  return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [
+    convertSnakeToCamel((k.startsWith(':') || k.startsWith('#') || k.startsWith('@')) ? k.slice(1) : k),
+    useAttr(k, v, context, processor),
+  ])) as Attrs
 }
 export function useAttr(key: string, source: string, context: Context, processor?: ReturnType<typeof createProcessor>) {
   if (key.startsWith(':')) {
     return useExprAttr(source as ExprAttrSource, context, processor)
   }
   else if (key.startsWith('#')) {
-    return useFlowAttr(source as FlowAttrSource, context)
+    return useFlowAttr(key, source as FlowAttrSource)
   }
   else if (key.startsWith('@')) {
-    return useEventAttr(source as EventAttrSource, context)
+    return useEventAttr(key, source as EventAttrSource)
+  }
+  else if (key.startsWith('$')) {
+    return useAnimationAttr(key, source as AnimationAttrSource)
   }
   else {
     return source
   }
 }
 export function useExprAttr(source: ExprAttrSource, context: Context, processor?: ReturnType<typeof createProcessor>) {
-  return processor!(source)
+  const v = processor!(source) as MaybeRef
+  return ref(v.value ?? v)
 }
-export function useFlowAttr(_source: FlowAttrSource, _context: Context) {
+export function useFlowAttr(key: string, source: FlowAttrSource) {
+  return [FLOW, source, key.slice(1)]
 }
-export function useEventAttr(_source: EventAttrSource, _context: Context, _processor?: ReturnType<typeof createProcessor>) {
-  return _source
+export function useEventAttr(key: string, source: EventAttrSource) {
+  return [EVENT, source, key.slice(1)]
 }
 export function getCommonAttrs(attrs: Attrs) {
   return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => !(Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT))))
+}
+
+export function createDelegate(
+  processor: ReturnType<typeof createProcessor>,
+) {
+  return (attrs: Attrs, node: Node) => {
+    for (const [_, value] of Object.entries(attrs)) {
+      if ((value as EventAttr)[0] !== EVENT)
+        continue
+      const [_, source, event] = <EventAttr> value
+      const wrapped = `function(){ ${source} }`
+      const handler = processor!(wrapped) as EventListenerOrEventListenerObject
+      node.addEventListener(event, unref(handler))
+    }
+  }
 }
 
 export function renderComp(element: ElementNode, space: ComponentSpace) {
@@ -155,13 +165,11 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   addActiveContext(getGlobals())
   const processor = createProcessor(activeContext)
   const delegate = createDelegate(processor)
-  const originalAttrs = useAttrs(
+  const animate = createAnimate(getContext(), element)
+  const attributes = useAttrs(
     Object.fromEntries(element.attributes.map(({ name, value }) => [name, value])),
     unwrapRefs(activeContext),
     processor,
-  )
-  const attributes = resolve(
-    getCommonAttrs(originalAttrs),
   )
   // TODO: Compute
 
@@ -190,7 +198,8 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
     const node = setup(
       () => renderRoots(element.children, childrenProcessor, space),
     )
-    delegate(originalAttrs, node)
+    animate(attributes, node)
+    delegate(attributes, node)
     effect(() => {
       const newNode = setup(
         () => renderRoots(element.children, childrenProcessor, space),
