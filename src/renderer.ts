@@ -125,7 +125,6 @@ export function useAttr(key: string, source: string, context: Context, processor
 }
 export function useExprAttr(source: ExprAttrSource, context: Context, processor?: ReturnType<typeof createProcessor>) {
   const v = processor!(source) as MaybeRef
-  console.log('v', v)
   return ref(v.value ?? v)
 }
 export function useFlowAttr(key: string, source: FlowAttrSource) {

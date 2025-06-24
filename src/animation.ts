@@ -107,7 +107,6 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
         item += char
       }
     }
-    console.log(parts)
     if (parts.length < 2)
       throw new Error(`Invalid animation arguments length: ${str}`)
 
