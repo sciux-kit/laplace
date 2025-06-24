@@ -120,11 +120,12 @@ export function useAttr(key: string, source: string, context: Context, processor
     return useAnimationAttr(key, source as AnimationAttrSource)
   }
   else {
-    return source
+    return useStringAttr(source)
   }
 }
 export function useExprAttr(source: ExprAttrSource, context: Context, processor?: ReturnType<typeof createProcessor>) {
   const v = processor!(source) as MaybeRef
+  console.log('v', v)
   return ref(v.value ?? v)
 }
 export function useFlowAttr(key: string, source: FlowAttrSource) {
@@ -132,6 +133,9 @@ export function useFlowAttr(key: string, source: FlowAttrSource) {
 }
 export function useEventAttr(key: string, source: EventAttrSource) {
   return [EVENT, source, key.slice(1)]
+}
+export function useStringAttr(source: string) {
+  return ref(source)
 }
 export function getCommonAttrs(attrs: Attrs) {
   return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => !(Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT))))
@@ -191,7 +195,10 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
 
   const oldContext = activeContext
 
-  return runInContext(mergeContext(getContext(), reactive(provides ?? {})), () => {
+  return runInContext(mergeContext(
+    getContext(),
+    reactive(provides ?? {}),
+  ), () => {
     if (!setup)
       return null
     const childrenProcessor = createProcessor(activeContext)

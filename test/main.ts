@@ -77,6 +77,7 @@ const ttt = defineComponent((attrs) => {
     globals: {},
     setup(children) {
       console.log('Heeeeeeelllllloooo ttttttttttt!')
+      console.log(attrs)
       const t = document.createElement('div')
       t.textContent = 'Hello' + attrs.x.value
       for (const child of children()) {
@@ -90,6 +91,7 @@ const ttt = defineComponent((attrs) => {
 
 const space = new Map()
 space.set('ppp', ppp)
+space.set('let', letBuiltIn)
 
 const newTtt = withSpace(ttt, space)
 root.set('ttt', newTtt)
@@ -106,8 +108,8 @@ flows.set('else-if', elseIfFlow)
 // flows.set('animate', animationFlow)
 
 const source = `
-<let :y="114514" />
 <ttt @click="console.log('click')" :x="3" $click="y(1000,1),1000,easeBounce">
+  <let y="114514" />
 </ttt>
 {{ y }}
 `
