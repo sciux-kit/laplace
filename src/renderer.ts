@@ -237,11 +237,16 @@ export function renderNode(
   processor: ReturnType<typeof createProcessor> = createProcessor(activeContext),
   space: ComponentSpace,
 ): Node | Node[] {
+  node.domNode = void 0
   if (node.type === NodeType.TEXT) {
-    return renderText((node as TextNode).content)
+    const domNode = renderText((node as TextNode).content)
+    node.domNode = domNode
+    return domNode
   }
   else if (node.type === NodeType.VALUE) {
-    return renderValue((node as ValueNode).value)
+    const domNode = renderValue((node as ValueNode).value)
+    node.domNode = domNode
+    return domNode
   }
   else if (node.type === NodeType.ELEMENT) {
     const elementNode = node as ElementNode
@@ -279,10 +284,9 @@ export function renderNode(
     }
     (node as ElementNode).attributes = originalAttrs
 
-    if (result)
-      return result
-    else
-      return []
+    const domNode = result ?? []
+    node.domNode = domNode
+    return domNode
   }
   else if (node.type === NodeType.COMMENT) {
     return []
