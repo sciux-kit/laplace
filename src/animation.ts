@@ -161,6 +161,48 @@ export function useAnimationAttr(key: string, source: AnimationAttrSource): Anim
   return [ANIMATION, resolve(source), key.slice(1)]
 }
 
+export class AnimationManager {
+  private immediate = Symbol('immediate')
+  private actions: Array<[typeof this.immediate | Node, () => Promise<void>]> = []
+  private autoExecute = true
+
+  execute() {
+    for (const action of this.actions) {
+      if (action[0] === this.immediate) {
+        action[1]()
+      }
+      else if (action[0] instanceof Node) {
+        action[0].addEventListener('animationend', action[1])
+      }
+    }
+  }
+
+  enableAutoExecute() {
+    this.autoExecute = true
+  }
+
+  disableAutoExecute() {
+    this.autoExecute = false
+  }
+
+  addAction(executer: () => Promise<void>, node?: Node): this {
+    if (node) {
+      this.actions.push([node, executer])
+    }
+    else {
+      this.actions.push([this.immediate, executer])
+    }
+    return this
+  }
+
+  init() {
+    if (this.autoExecute) {
+      this.execute()
+    }
+  }
+}
+export const animationManager = new AnimationManager()
+
 export function createAnimate(context: Context, source: ElementNode) {
   return (attrs: Attrs, node: Node) => {
     for (const [_, value] of Object.entries(attrs)) {
@@ -207,10 +249,10 @@ export function createAnimate(context: Context, source: ElementNode) {
         }
       }
       if (eventName) {
-        node.addEventListener(eventName, executer)
+        animationManager.addAction(executer, node)
       }
       else {
-        executer()
+        animationManager.addAction(executer)
       }
     }
   }
