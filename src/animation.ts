@@ -131,12 +131,12 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
     const params = paramsStr ? paramsStr.split(',').map(p => p.trim()).filter(Boolean) : undefined
 
     let easingFn: Easing
-    if (!easing || easing === '')
+    if (!easing || easing === '') {
       easingFn = t => t
+    }
     else {
       easingFn = easingResolver(easing)
     }
-
 
     return {
       name,
@@ -172,11 +172,9 @@ export class AnimationManager {
   private defaultEasing: Easing = t => t
 
   execute(filter?: (name: string) => boolean) {
-
     for (const [names, node, executer, eventName] of this.actions) {
       for (const name of names) {
         if (filter && !filter(name)) {
-
           continue
         }
         if (node === this.immediate) {
