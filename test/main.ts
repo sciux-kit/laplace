@@ -1,5 +1,5 @@
 import { type } from 'arktype'
-import { defineAnimation, defineComponent, flows, render, root, withSpace } from '../src'
+import { defineAnimation, defineComponent, flows, render, root, watch, withSpace } from '../src'
 import f from '../src/flows/for'
 import letBuiltIn from '../src/builtins/let'
 import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
@@ -12,12 +12,12 @@ const move = defineAnimation((node, ctx, { attrs }) => {
   return {
     setup(progress) {
       if (progress >= 1) {
-        console.log(attrs.x.value)
+
         attrs.x.value = 333
         return true
       }
       node.style.transform = `translateX(${ctx.easing(progress) * 100}px)`
-      console.log(node.style.transform)
+
       return false
     },
     validator(name) {
@@ -55,7 +55,7 @@ const ppp = defineComponent((attrs) => {
     attrs: type('object'),
     globals: {},
     setup(children) {
-      console.log('Heeeeeeelllllloooo pppppppppp!')
+
       const p = document.createElement('p')
       for (const child of children()) {
         if (child)
@@ -70,15 +70,35 @@ const ppp = defineComponent((attrs) => {
   }
 })
 
+const ccc = defineComponent((attrs) => {
+  return {
+    name: 'ccc',
+    attrs: type('object'),
+    globals: {},
+    setup(children) {
+      const c = document.createElement('div')
+      c.textContent = attrs.x.value
+      return c
+    },
+  }
+})
+
 const ttt = defineComponent((attrs) => {
+
+  watch(attrs.x, (x) => {
+
+  })
   return {
     name: 'ttt',
     attrs: type('object'),
     globals: {},
+    defaults: {
+      x: 0,
+      y: 0,
+    },
     setup(children) {
-      console.log('Heeeeeeelllllloooo ttttttttttt!')
-      console.log(attrs)
       const t = document.createElement('div')
+      t.style.transform = `translateX(${attrs.x.value}px) translateY(${attrs.y.value}px)`
       t.textContent = 'Hello' + attrs.x.value
       for (const child of children()) {
         if (child)
@@ -92,11 +112,12 @@ const ttt = defineComponent((attrs) => {
 const space = new Map()
 space.set('ppp', ppp)
 space.set('let', letBuiltIn)
+space.set('ccc', ccc)
 
-const newTtt = withSpace(ttt, space)
-root.set('ttt', newTtt)
+// const newTtt = withSpace(ttt, space)
+root.set('ttt', ttt)
+root.set('ccc', ccc)
 
-console.log(newTtt({}, {}))
 
 for (const flow of flowsToRegister) {
   flows.set(flow.name, flow)
@@ -108,10 +129,12 @@ flows.set('else-if', elseIfFlow)
 // flows.set('animate', animationFlow)
 
 const source = `
-<ttt @click="console.log('click')" :x="3" $click="y(1000,1),1000,easeBounce">
-  <let y="114514" />
+<let :x="100" />
+<let :y="Math.sin(x / 100) * 100" />
+<ttt :x="x" :y="y + 200" $="x(0,1000),5000">
 </ttt>
-{{ y }}
+<ccc :x="x" />
+{{ x }}
 `
 
 render(source, document.getElementById('app')!)

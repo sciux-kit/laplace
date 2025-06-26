@@ -69,5 +69,5 @@ const easingSet: Record<string, Easing> = {
 
 export function easingResolver(source: string) {
   const name = convertSnakeToCamel(source)
-  return easingSet[name]
+  return easingSet[name.startsWith('ease') ? name : `ease${name.charAt(0).toUpperCase()}${name.slice(1)}`]
 }

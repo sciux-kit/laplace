@@ -63,6 +63,7 @@ export function resolveVariable(source: string) {
       },
       setup(progress) {
         variable.value = from + (to - from) * progress
+
         if (progress >= 1)
           return true
         return false
@@ -107,6 +108,7 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
         item += char
       }
     }
+    parts.push(item)
     if (parts.length < 2)
       throw new Error(`Invalid animation arguments length: ${str}`)
 
@@ -115,8 +117,7 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
     if (Number.isNaN(duration))
       throw new Error(`Invalid duration: ${parts[1]}`)
 
-    // Get the second last part as easing if it exists
-    const easing = parts.length > 2 ? parts[parts.length - 2] : ''
+    const easing = parts.length > 2 ? parts[parts.length - 1] : ''
 
     // Get the animation part (name and params)
     const animPart = parts.slice(0, parts.length - (easing ? 2 : 1)).join(',')
@@ -132,7 +133,10 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
     let easingFn: Easing
     if (!easing || easing === '')
       easingFn = t => t
-    else easingFn = easingResolver(easing)
+    else {
+      easingFn = easingResolver(easing)
+    }
+
 
     return {
       name,
@@ -163,16 +167,26 @@ export function useAnimationAttr(key: string, source: AnimationAttrSource): Anim
 
 export class AnimationManager {
   private immediate = Symbol('immediate')
-  private actions: Array<[typeof this.immediate | Node, () => Promise<void>]> = []
+  private actions: Array<[string[], typeof this.immediate | Node, () => Promise<void>, string?]> = []
   private autoExecute = true
+  private defaultEasing: Easing = t => t
 
-  execute() {
-    for (const action of this.actions) {
-      if (action[0] === this.immediate) {
-        action[1]()
-      }
-      else if (action[0] instanceof Node) {
-        action[0].addEventListener('animationend', action[1])
+  execute(filter?: (name: string) => boolean) {
+
+    for (const [names, node, executer, eventName] of this.actions) {
+      for (const name of names) {
+        if (filter && !filter(name)) {
+
+          continue
+        }
+        if (node === this.immediate) {
+          executer()
+          break
+        }
+        else if (node instanceof Node) {
+          node.addEventListener(eventName!, executer)
+          break
+        }
       }
     }
   }
@@ -185,14 +199,22 @@ export class AnimationManager {
     this.autoExecute = false
   }
 
-  addAction(executer: () => Promise<void>, node?: Node): this {
+  addAction(names: string[], executer: () => Promise<void>, node?: Node, eventName?: string): this {
     if (node) {
-      this.actions.push([node, executer])
+      this.actions.push([names, node, executer, eventName])
     }
     else {
-      this.actions.push([this.immediate, executer])
+      this.actions.push([names, this.immediate, executer])
     }
     return this
+  }
+
+  setDefaultEasing(easing: Easing) {
+    this.defaultEasing = easing
+  }
+
+  getDefaultEasing() {
+    return this.defaultEasing
   }
 
   init() {
@@ -202,6 +224,9 @@ export class AnimationManager {
   }
 }
 export const animationManager = new AnimationManager()
+window.addEventListener('load', () => {
+  animationManager.init()
+})
 
 export function createAnimate(context: Context, source: ElementNode) {
   return (attrs: Attrs, node: Node) => {
@@ -210,6 +235,7 @@ export function createAnimate(context: Context, source: ElementNode) {
         continue
       const [_, maybeGroup, eventName] = <AnimationAttr>value
       const group = Array.isArray(maybeGroup) ? maybeGroup : [maybeGroup]
+
       const executer = async () => {
         for (const animation of group) {
           const promises: Promise<void>[] = []
@@ -220,7 +246,8 @@ export function createAnimate(context: Context, source: ElementNode) {
               const anims = toArray(anim)
 
               for (const anim of anims) {
-                const easing = animItem.easing ?? (t => t)
+                const easing = animItem.easing ?? animationManager.getDefaultEasing()
+
                 const { setup, validator } = anim(node, {
                   duration: animItem.duration,
                   easing,
@@ -249,10 +276,10 @@ export function createAnimate(context: Context, source: ElementNode) {
         }
       }
       if (eventName) {
-        animationManager.addAction(executer, node)
+        animationManager.addAction(group.map(g => toArray(g).map(lg => lg.name)).flat(), executer, node, eventName)
       }
       else {
-        animationManager.addAction(executer)
+        animationManager.addAction(group.map(g => toArray(g).map(lg => lg.name)).flat(), executer)
       }
     }
   }
