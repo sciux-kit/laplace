@@ -222,9 +222,6 @@ export class AnimationManager {
   }
 }
 export const animationManager = new AnimationManager()
-window.addEventListener('load', () => {
-  animationManager.init()
-})
 
 export function createAnimate(context: Context, source: ElementNode) {
   return (attrs: Attrs, node: Node) => {

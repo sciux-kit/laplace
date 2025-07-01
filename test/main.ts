@@ -1,5 +1,5 @@
 import { type } from 'arktype'
-import { defineAnimation, defineComponent, flows, render, root, watch, withSpace } from '../src'
+import { animationManager, defineAnimation, defineComponent, flows, render, root, watch, withSpace } from '../src'
 import f from '../src/flows/for'
 import letBuiltIn from '../src/builtins/let'
 import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
@@ -7,6 +7,10 @@ import { animations } from '../src'
 import { laplace2domlike } from '../src/dom-compat'
 import { parse } from '../src/parser'
 import { querySelectorXPath } from '../src/selector'
+
+window.addEventListener('load', () => {
+  animationManager.init()
+})
 
 const move = defineAnimation((node, ctx, { attrs }) => {
   return {
@@ -129,12 +133,13 @@ flows.set('else-if', elseIfFlow)
 // flows.set('animate', animationFlow)
 
 const source = `
-<let :x="100" />
-<let :y="Math.sin(x / 100) * 100" />
-<ttt :x="x" :y="y + 200" $="x(0,1000),5000">
+<let :pos_x="100" />
+<let :y="Math.sin(pos_x / 100) * 100" />
+<ttt :x="pos_x" :y="y + 200" $="pos_x(0,1000),5000">
+<let :z="pos_x + 100" />
+<ccc :x="pos_x + z" />
 </ttt>
-<ccc :x="x" />
-{{ x }}
+{{ pos_x }}
 `
 
 render(source, document.getElementById('app')!)
