@@ -205,9 +205,10 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
     )
     animate(attributes, node)
     delegate(attributes, node)
+    const roots = renderRoots(element.children, childrenProcessor, space)
     effect(() => {
       const newNode = setup(
-        () => renderRoots(element.children, childrenProcessor, space),
+        () => roots,
       )
 
       patch(node, newNode)

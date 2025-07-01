@@ -12,6 +12,34 @@ window.addEventListener('load', () => {
   animationManager.init()
 })
 
+import type { Context } from 'sciux-laplace'
+import { toValue } from '@vue/reactivity'
+import { type } from 'arktype'
+import { defineComponent } from 'sciux-laplace'
+
+const T = type({
+  disabled: 'boolean',
+})
+
+const button = defineComponent<'button', typeof T.infer, Context>((attrs, _context) => {
+  return {
+    name: 'button',
+    attrs: T,
+    defaults: {
+      disabled: false,
+    },
+    setup: (children) => {
+      console.log('wwwwwwwwwwww')
+      const element = document.createElement('button')
+      element.disabled = toValue(attrs.disabled)
+      element.append(...children())
+      return element
+    },
+  }
+})
+root.set('button', button)
+
+
 const move = defineAnimation((node, ctx, { attrs }) => {
   return {
     setup(progress) {
@@ -135,7 +163,8 @@ flows.set('else-if', elseIfFlow)
 const source = `
 <let :pos_x="100" />
 <let :y="Math.sin(pos_x / 100) * 100" />
-<ttt :x="pos_x" :y="y + 200" $="pos_x(0,1000),5000">
+<ttt :x="pos_x" :y="y + 200" @click="pos_x++">
+<button @click="pos_x++">Click me</button>
 <let :z="pos_x + 100" />
 <ccc :x="pos_x + z" />
 </ttt>
