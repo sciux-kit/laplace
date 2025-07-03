@@ -1,4 +1,5 @@
 import { parseEntities } from 'parse-entities'
+import type { ComponentSpace, Context, Processor, ProcessorUpdater } from './renderer'
 
 export const TAG_START_REG = /^<(\p{ID_Start}[\p{ID_Continue}:.$@\-]*)/u
 export const DIRECTIVE_REG = /^<!(\p{ID_Start}[\p{ID_Continue}:.$@\-]*)/u
@@ -41,6 +42,9 @@ export interface BaseNode {
   type: NodeType
   parent?: FragmentNode | DocumentNode | ElementNode
   domNode?: Node | Node[]
+  processor?: Processor<Context>
+  updater?: ProcessorUpdater<Context>
+  space?: ComponentSpace
 }
 
 export interface ValueNode extends BaseNode {

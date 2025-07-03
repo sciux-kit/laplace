@@ -51,7 +51,7 @@ export type AnimationAttr = [typeof ANIMATION, AnimationParsedResult, string?]
 
 export function resolveVariable(source: string) {
   return defineAnimation((_, { params }, { context: ctx }) => {
-    const processor = createProcessor(ctx)
+    const [processor] = createProcessor(ctx)
     const variable = toRaw(ctx)[source] as MaybeRef<number>
     if (!isRef(variable)) {
       return { setup: () => false, validator: () => false }

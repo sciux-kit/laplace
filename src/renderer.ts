@@ -4,7 +4,7 @@ import { type } from 'arktype'
 import patch from 'morphdom'
 import type { Component } from './component'
 import type { Flow } from './flow'
-import type { BaseNode, ElementNode, FragmentNode, ParseOptions, TextNode, ValueNode } from './parser'
+import type { BaseNode, DocumentNode, ElementNode, FragmentNode, ParseOptions, TextNode, ValueNode } from './parser'
 import { NodeType, TextMode, parse } from './parser'
 import { convertSnakeToCamel } from './utils'
 import type { AnimationAttr, AnimationAttrSource } from './animation'
@@ -33,7 +33,13 @@ export function setContext(ctx: Context) {
   activeContext = ctx
 }
 export function mergeContext(target: Context, from: Context): Context {
-  return reactive(Object.assign(toRefs(target), toRefs(from)))
+  const intersection = Object.keys(from).filter(k => k in target)
+  for (const key of intersection) {
+    target[key] = from[key]
+  }
+  const fromRefs = Object.fromEntries(Object.entries(toRefs(from)).filter(([k]) => !(k in target)))
+  const result = Object.assign(toRefs(target), fromRefs)
+  return reactive(result)
 }
 export function addActiveContext(additional: Context) {
   activeContext = mergeContext(activeContext, additional)
@@ -67,26 +73,41 @@ export function unwrapRefs(o: Context): Record<string, unknown> {
 //   return Object.fromEntries(Object.entries(o).map(([k, v]: [string, MaybeRef]) => [k.replace(/^([:#@])/, ''), ref(v.value ?? v)]))
 // }
 
-export function createProcessor(o: Context): (source: string) => unknown {
-  return (source) => {
-    if (typeof source === 'string') {
-      return _createProcessor(o)(source, o)
-    }
-    else {
-      throw new TypeError('invalid source')
-    }
-  }
+export type Processor<T extends Context> = (source: string, context?: T) => unknown
+export type ProcessorUpdater<T extends Context> = (context: T) => T
+export function createProcessor<T extends Context>(o: T): [Processor<T>, ProcessorUpdater<T>] {
+  const [processor, update] = _createProcessor(o)
+  return [
+    (source) => {
+      if (typeof source === 'string') {
+        return processor(source, o)
+      }
+      else {
+        throw new TypeError('invalid source')
+      }
+    },
+    (context) => {
+      return update(context)
+    },
+  ]
 }
-export function _createProcessor<T extends Context>(o: T): (source: string, context?: T) => unknown {
-  return (source, ctx?) => {
+export function _createProcessor<T extends Context>(o: T): [Processor<T>, ProcessorUpdater<T>] {
+  const context = o
+  function processor(source: string, ctx?: T) {
     // eslint-disable-next-line no-new-func
     const adhoc = new Function(`return (function($__eich_ctx){with($__eich_ctx){return (${source});}});`)() as any
     if (ctx == null && o == null) {
       throw new TypeError('missing context')
     }
 
-    return adhoc(ctx ?? o)
+    return adhoc(ctx ?? context)
   }
+
+  function update(ctx: T) {
+    return mergeContext(context, ctx) as T
+  }
+
+  return [processor, update]
 }
 
 export type AttrSource = string | ExprAttrSource | FlowAttrSource | EventAttrSource
@@ -100,13 +121,13 @@ export const EVENT = Symbol('event')
 export type EventAttr = [typeof EVENT, EventAttrSource, string]
 export type Attr = unknown | FlowAttr | EventAttr | AnimationAttr
 export type Attrs = Record<string, Attr>
-export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: ReturnType<typeof createProcessor>): Attrs {
+export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: Processor<Context>): Attrs {
   return Object.fromEntries(Object.entries(attrSources).map(([k, v]) => [
     convertSnakeToCamel((k.startsWith(':') || k.startsWith('#') || k.startsWith('@')) ? k.slice(1) : k),
     useAttr(k, v, context, processor),
   ])) as Attrs
 }
-export function useAttr(key: string, source: string, context: Context, processor?: ReturnType<typeof createProcessor>) {
+export function useAttr(key: string, source: string, context: Context, processor?: Processor<Context>) {
   if (key.startsWith(':')) {
     return useExprAttr(source as ExprAttrSource, context, processor)
   }
@@ -123,8 +144,8 @@ export function useAttr(key: string, source: string, context: Context, processor
     return useStringAttr(source)
   }
 }
-export function useExprAttr(source: ExprAttrSource, context: Context, processor?: ReturnType<typeof createProcessor>) {
-  return computed(() => processor!(source))
+export function useExprAttr(source: ExprAttrSource, context: Context, processor?: Processor<Context>) {
+  return computed(() => processor!(source, context))
 }
 export function useFlowAttr(key: string, source: FlowAttrSource) {
   return [FLOW, source, key.slice(1)]
@@ -140,7 +161,7 @@ export function getCommonAttrs(attrs: Attrs) {
 }
 
 export function createDelegate(
-  processor: ReturnType<typeof createProcessor>,
+  processor: Processor<Context>,
 ) {
   return (attrs: Attrs, node: Node) => {
     for (const [_, value] of Object.entries(attrs)) {
@@ -148,7 +169,7 @@ export function createDelegate(
         continue
       const [_, source, event] = <EventAttr> value
       const wrapped = `function(){ ${source} }`
-      const handler = processor!(wrapped) as EventListenerOrEventListenerObject
+      const handler = processor(wrapped) as EventListenerOrEventListenerObject
       node.addEventListener(event, unref(handler))
     }
   }
@@ -165,7 +186,12 @@ export function renderComp(element: ElementNode, space: ComponentSpace) {
 }
 export function _renderComp<T extends string, A extends Record<string, unknown>>(comp: Component<T, A>, element: ElementNode): Node | null {
   addActiveContext(getGlobals())
-  const processor = createProcessor(activeContext)
+  const [processor, update]
+    = element.processor && element.updater
+      ? [element.processor, element.updater]
+      : createProcessor(activeContext)
+  element.processor = processor
+  element.updater = update
   const delegate = createDelegate(processor)
   const animate = createAnimate(getContext(), element)
   const attributes = useAttrs(
@@ -173,11 +199,6 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
     unwrapRefs(activeContext),
     processor,
   )
-  // TODO: Compute
-
-  // if (typedAttrs(unwrapRefs(attributes)) instanceof type.errors) {
-  //   throw new Error(`[sciux laplace] component <${element.tag}> attributes do not match expected type ${typedAttrs.toString()}`)
-  // }
 
   const { name, attrs: _typedAttrs, setup, provides, globals: compGlobals, defaults, space } = comp(attributes as ToRefs<A>, activeContext)
   for (const [key, value] of Object.entries(defaults ?? {})) {
@@ -199,7 +220,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   ), () => {
     if (!setup)
       return null
-    const childrenProcessor = createProcessor(activeContext)
+    const [childrenProcessor] = createProcessor(activeContext)
     const node = setup(
       () => renderRoots(element.children, childrenProcessor, space),
     )
@@ -219,12 +240,18 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
   })
 }
 
-export function renderValue(value: string) {
+export function renderValue(element: ValueNode) {
   addActiveContext(getGlobals())
   const interalContext = getContext()
-  const node = document.createTextNode(((createProcessor(interalContext)(value) as any).toString()))
+  const [processor, update]
+    = element.processor && element.updater
+      ? [element.processor, element.updater]
+      : createProcessor(interalContext)
+  element.processor = processor
+  element.updater = update
+  const node = document.createTextNode(((processor(element.value) as any).toString()))
   effect(() => {
-    node.textContent = (createProcessor(interalContext)(value) as any).toString()
+    node.textContent = (processor(element.value) as any).toString()
   })
   return node
 }
@@ -235,7 +262,7 @@ export function renderText(text: string) {
 
 export function renderNode(
   node: BaseNode,
-  processor: ReturnType<typeof createProcessor> = createProcessor(activeContext),
+  processor: Processor<Context> = createProcessor(activeContext)[0],
   space: ComponentSpace,
 ): Node | Node[] {
   node.domNode = void 0
@@ -245,7 +272,7 @@ export function renderNode(
     return domNode
   }
   else if (node.type === NodeType.VALUE) {
-    const domNode = renderValue((node as ValueNode).value)
+    const domNode = renderValue(node as ValueNode)
     node.domNode = domNode
     return domNode
   }
@@ -287,6 +314,7 @@ export function renderNode(
 
     const domNode = result ?? []
     node.domNode = domNode
+    node.space = space
     return domNode
   }
   else if (node.type === NodeType.COMMENT) {
@@ -298,7 +326,7 @@ export function renderNode(
   throw new Error('Unreachable')
 }
 
-export function renderRoots(roots: BaseNode[], processor?: ReturnType<typeof createProcessor>, space: ComponentSpace = root) {
+export function renderRoots(roots: BaseNode[], processor?: Processor<Context>, space: ComponentSpace = root) {
   const nodes: Node[] = []
   roots.forEach((root) => {
     const result = renderNode(root, processor, space)
@@ -310,6 +338,19 @@ export function renderRoots(roots: BaseNode[], processor?: ReturnType<typeof cre
     }
   })
   return nodes
+}
+
+export function createUpdater() {
+  return (node: BaseNode) => {
+    const newDomNode = renderNode(node, node.processor, node.space ?? root) as Node
+    if (node.domNode) {
+      patch(node.domNode as Node, newDomNode as Node)
+      node.domNode = newDomNode
+    }
+    else {
+      node.domNode = newDomNode
+    }
+  }
 }
 
 export function render(source: string, target?: Node, parseOptions: ParseOptions = {}) {
@@ -324,4 +365,6 @@ export function render(source: string, target?: Node, parseOptions: ParseOptions
     if (node)
       target?.appendChild(node)
   })
+
+  return [createUpdater(), ast]
 }
