@@ -1,6 +1,5 @@
 import type { BaseNode } from './parser'
-import type { createProcessor } from './renderer'
-import { Context } from './renderer'
+import type { Context, Processor } from './renderer'
 
 interface PreFlow {
   type: 'pre'
@@ -10,7 +9,7 @@ interface PostFlow {
   type: 'post'
   flow: (value: string, node: Node, source: BaseNode) => void
 }
-export type Flow = (processor: ReturnType<typeof createProcessor>, ...rest: string[]) => (PreFlow | PostFlow) & {
+export type Flow = (processor: Processor<Context>, ...rest: string[]) => (PreFlow | PostFlow) & {
   name: string
 }
 

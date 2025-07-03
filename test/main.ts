@@ -115,8 +115,9 @@ const ccc = defineComponent((attrs) => {
   }
 })
 
-const ttt = defineComponent((attrs) => {
+const ttt = defineComponent((attrs, context) => {
 
+  console.log(context)
   watch(attrs.x, (x) => {
 
   })
@@ -171,4 +172,14 @@ const source = `
 {{ pos_x }}
 `
 
-render(source, document.getElementById('app')!)
+const [updater, ast] = render(source, document.getElementById('app')!)
+
+console.log(ast)
+const target = ast.children[3]!
+target.attributes[0].value = '444'
+
+updater(target)
+
+
+
+
