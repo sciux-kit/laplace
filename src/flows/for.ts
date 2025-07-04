@@ -2,10 +2,10 @@ import type { ComputedRef } from '@vue/reactivity'
 import { computed, effect, toValue, watch } from '@vue/reactivity'
 import patch from 'morphdom'
 import { defineFlow } from '../flow'
-import type { createProcessor } from '../renderer'
-import { Context, activeContext, addActiveContext, getContext, toArray } from '../renderer'
+import type { Context, Processor } from '../renderer'
+import { activeContext, addActiveContext, toArray } from '../renderer'
 
-function resolve(source: string, processor: ReturnType<typeof createProcessor>): {
+function resolve(source: string, processor: Processor<Context>): {
   key: string
   value: ComputedRef<Iterable<unknown>>
 } {
