@@ -18,13 +18,10 @@ export interface AnimationCompContext<A extends Record<string, unknown>, C exten
 export type Easing = (progress: number) => number
 export type AnimationSetup = (progress: number) => boolean
 export type Animation<Params extends string[], A extends Record<string, unknown>, C extends Context = {}> = (
-  node: Node,
+  node: Node | HTMLElement,
   animationContext: AnimationContext<Params>,
   compContext: AnimationCompContext<A, C>,
-) => {
-  validator?: (name: string) => boolean
-  setup: AnimationSetup
-}
+) => AnimationSetup | boolean | void
 
 export function defineAnimation<
   T extends string[] = string[],
@@ -54,20 +51,15 @@ export function resolveVariable(source: string) {
     const [processor] = createProcessor(ctx)
     const variable = toRaw(ctx)[source] as MaybeRef<number>
     if (!isRef(variable)) {
-      return { setup: () => false, validator: () => false }
+      return () => true
     }
     const [from, to] = <[number, number]>(params.length !== 2 ? [variable.value, processor(params[0])] : params.map(p => processor(p)))
-    return {
-      validator() {
-        return true
-      },
-      setup(progress) {
-        variable.value = from + (to - from) * progress
+    return (progress) => {
+      variable.value = from + (to - from) * progress
 
-        if (progress >= 1)
-          return true
-        return false
-      },
+      if (progress >= 1)
+        return true
+      return false
     }
   })
 }
@@ -243,7 +235,7 @@ export function createAnimate(context: Context, source: ElementNode) {
               for (const anim of anims) {
                 const easing = animItem.easing ?? animationManager.getDefaultEasing()
 
-                const { setup, validator } = anim(node, {
+                const setup = anim(node, {
                   duration: animItem.duration,
                   easing,
                   params: animItem.params ?? [],
@@ -251,7 +243,7 @@ export function createAnimate(context: Context, source: ElementNode) {
                   attrs,
                   context,
                 })
-                if (validator && !validator((source as ElementNode).tag))
+                if (typeof setup === 'boolean' || !setup)
                   continue
                 requestAnimationFrame(function loop() {
                   const progress = easing((performance.now() - start) / animItem.duration)
