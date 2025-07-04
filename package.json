@@ -1,7 +1,7 @@
 {
   "name": "sciux-laplace",
   "type": "module",
-  "version": "0.0.1-beta.11",
+  "version": "0.0.1-beta.12",
   "description": "Renderer for Sciux Toolkit.",
   "exports": {
     ".": {

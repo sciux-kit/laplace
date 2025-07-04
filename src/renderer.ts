@@ -366,5 +366,5 @@ export function render(source: string, target?: Node, parseOptions: ParseOptions
       target?.appendChild(node)
   })
 
-  return [createUpdater(), ast]
+  return [ast, createUpdater()]
 }
