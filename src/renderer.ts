@@ -1,5 +1,5 @@
 import type { MaybeRef, Reactive, Ref, ToRefs } from '@vue/reactivity'
-import { WatchSource, computed, effect, reactive, ref, toRef, toRefs, toValue, unref } from '@vue/reactivity'
+import { WatchSource, computed, effect, isRef, reactive, ref, toRef, toRefs, toValue, unref } from '@vue/reactivity'
 import { type } from 'arktype'
 import patch from 'morphdom'
 import type { Component } from './component'
@@ -118,7 +118,7 @@ export type EventAttrSource = `@${string}`
 export const FLOW = Symbol('flow')
 export type FlowAttr = [typeof FLOW, FlowAttrSource]
 export const EVENT = Symbol('event')
-export type EventAttr = [typeof EVENT, EventAttrSource, string]
+export type EventAttr = [typeof EVENT, EventAttrSource, (args: any[]) => void]
 export type Attr = unknown | FlowAttr | EventAttr | AnimationAttr
 export type Attrs = Record<string, Attr>
 export function useAttrs(attrSources: Record<string, AttrSource>, context: Context, processor?: Processor<Context>): Attrs {
@@ -135,7 +135,7 @@ export function useAttr(key: string, source: string, context: Context, processor
     return useFlowAttr(key, source as FlowAttrSource)
   }
   else if (key.startsWith('@')) {
-    return useEventAttr(key, source as EventAttrSource)
+    return useEventAttr(key, source as EventAttrSource, processor)
   }
   else if (key.startsWith('$')) {
     return useAnimationAttr(key, source as AnimationAttrSource)
@@ -150,8 +150,10 @@ export function useExprAttr(source: ExprAttrSource, context: Context, processor?
 export function useFlowAttr(key: string, source: FlowAttrSource) {
   return [FLOW, source, key.slice(1)]
 }
-export function useEventAttr(key: string, source: EventAttrSource) {
-  return [EVENT, source, key.slice(1)]
+export function useEventAttr(key: string, source: EventAttrSource, processor?: Processor<Context>) {
+  const wrapped = `function(){ ${source} }`
+  const handler = processor!(wrapped) as (args: any[]) => void
+  return [EVENT, key.slice(1), handler]
 }
 export function useStringAttr(source: string) {
   return computed(() => source)
@@ -159,18 +161,41 @@ export function useStringAttr(source: string) {
 export function getCommonAttrs(attrs: Attrs) {
   return Object.fromEntries(Object.entries(attrs).filter(([_, v]) => !(Array.isArray(v) && (v[0] === FLOW || v[0] === EVENT))))
 }
+export function isExprAttr(attr: Attr) {
+  return !Array.isArray(attr) && isRef(attr)
+}
+export function isFlowAttr(attr: Attr) {
+  return Array.isArray(attr) && attr[0] === FLOW
+}
+export function isEventAttr(attr: Attr) {
+  return Array.isArray(attr) && attr[0] === EVENT
+}
 
-export function createDelegate(
-  processor: Processor<Context>,
-) {
+export function createDelegate() {
   return (attrs: Attrs, node: Node) => {
     for (const [_, value] of Object.entries(attrs)) {
       if ((value as EventAttr)[0] !== EVENT)
         continue
-      const [_, source, event] = <EventAttr> value
-      const wrapped = `function(){ ${source} }`
-      const handler = processor(wrapped) as EventListenerOrEventListenerObject
-      node.addEventListener(event, unref(handler))
+      const [_, event, handler] = <EventAttr> value
+      node.addEventListener(event, (...args) => handler(args))
+    }
+  }
+}
+
+export function useEmit<T extends Record<string, (...args: any[]) => void>>(attrs: Attrs) {
+  return (event: keyof T, ...args: any[]) => {
+    const eventAttr = (<T>attrs)[event]
+    if (!isEventAttr(eventAttr)) {
+      console.warn(`[sciux laplace] event ${String(event)} is not an event attribute`)
+    }
+    else {
+      const [_, __, handler] = <EventAttr><Attr>eventAttr
+      if (handler) {
+        handler(args)
+      }
+      else {
+        console.warn(`[sciux laplace] event ${String(event)} not found`)
+      }
     }
   }
 }
@@ -192,7 +217,7 @@ export function _renderComp<T extends string, A extends Record<string, unknown>>
       : createProcessor(activeContext)
   element.processor = processor
   element.updater = update
-  const delegate = createDelegate(processor)
+  const delegate = createDelegate()
   const animate = createAnimate(getContext(), element)
   const attributes = useAttrs(
     Object.fromEntries(element.attributes.map(({ name, value }) => [name, value])),

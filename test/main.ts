@@ -1,5 +1,5 @@
 import { type } from 'arktype'
-import { animationManager, defineAnimation, defineComponent, flows, render, root, watch, withSpace } from '../src'
+import { animationManager, defineAnimation, defineComponent, flows, render, root, useEmit, watch, withSpace } from '../src'
 import f from '../src/flows/for'
 import letBuiltIn from '../src/builtins/let'
 import { elseFlow, elseIfFlow, ifFlow } from '../src/flows/condition'
@@ -118,6 +118,7 @@ const ccc = defineComponent((attrs) => {
 const ttt = defineComponent((attrs, context) => {
 
   console.log(context)
+  console.log(useEmit(attrs))
   watch(attrs.x, (x) => {
 
   })

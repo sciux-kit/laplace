@@ -156,6 +156,9 @@ function resolve(source: string, easingResolver: (name: string) => Easing = defa
 export function useAnimationAttr(key: string, source: AnimationAttrSource): AnimationAttr {
   return [ANIMATION, resolve(source), key.slice(1)]
 }
+export function isAnimationAttr(attr: Attr) {
+  return Array.isArray(attr) && attr[0] === ANIMATION
+}
 
 export class AnimationManager {
   private immediate = Symbol('immediate')
