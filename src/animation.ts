@@ -164,7 +164,25 @@ export class AnimationManager {
   private immediate = Symbol('immediate')
   private actions: Array<[string[], typeof this.immediate | Node, () => Promise<void>, string?]> = []
   private autoExecute = true
+  private autoIn: [string, number, Easing] | null = null
+  private autoOut: [string, number, Easing] | null = null
   private defaultEasing: Easing = t => t
+
+  setAutoIn(name: string, duration: number = 500, easing: Easing = this.defaultEasing) {
+    this.autoIn = [name, duration, easing]
+  }
+
+  setAutoOut(name: string, duration: number = 500, easing: Easing = this.defaultEasing) {
+    this.autoOut = [name, duration, easing]
+  }
+
+  getIn() {
+    return this.autoIn
+  }
+
+  getOut() {
+    return this.autoOut
+  }
 
   execute(filter?: (name: string) => boolean) {
     for (const [names, node, executer, eventName] of this.actions) {
@@ -218,13 +236,42 @@ export class AnimationManager {
 }
 export const animationManager = new AnimationManager()
 
-export function createAnimate(context: Context, source: ElementNode) {
+function _raf(easing: Easing, start: number, duration: number, setup: AnimationSetup, resolve: () => void) {
+  requestAnimationFrame(function loop() {
+    const progress = easing((performance.now() - start) / duration)
+    if (setup(progress)) {
+      resolve()
+    }
+    else {
+      requestAnimationFrame(loop)
+    }
+  })
+}
+export function createAnimate(context: Context, source?: ElementNode) {
   return (attrs: Attrs, node: Node) => {
     for (const [_, value] of Object.entries(attrs)) {
       if ((value as AnimationAttr)[0] !== ANIMATION)
         continue
       const [_, maybeGroup, eventName] = <AnimationAttr>value
       const group = Array.isArray(maybeGroup) ? maybeGroup : [maybeGroup]
+      const autoIn = animationManager.getIn()
+      const autoOut = animationManager.getOut()
+      if (autoIn) {
+        group.unshift({
+          name: autoIn[0],
+          duration: autoIn[1],
+          easing: autoIn[2],
+          params: [],
+        })
+      }
+      if (autoOut) {
+        group.push({
+          name: autoOut[0],
+          duration: autoOut[1],
+          easing: autoOut[2],
+          params: [],
+        })
+      }
 
       const executer = async () => {
         for (const animation of group) {
@@ -248,15 +295,7 @@ export function createAnimate(context: Context, source: ElementNode) {
                 })
                 if (typeof setup === 'boolean' || !setup)
                   continue
-                requestAnimationFrame(function loop() {
-                  const progress = easing((performance.now() - start) / animItem.duration)
-                  if (setup(progress)) {
-                    resolve()
-                  }
-                  else {
-                    requestAnimationFrame(loop)
-                  }
-                })
+                _raf(easing, start, animItem.duration, setup, resolve)
                 break
               }
             })
@@ -274,3 +313,12 @@ export function createAnimate(context: Context, source: ElementNode) {
     }
   }
 }
+
+export const delayAnim = defineAnimation(() => {
+  return (progress) => {
+    if (progress >= 1)
+      return true
+    return false
+  }
+})
+animations.set('delay', delayAnim)

@@ -165,7 +165,7 @@ flows.set('else-if', elseIfFlow)
 const source = `
 <let :pos_x="100" />
 <let :y="Math.sin(pos_x / 100) * 100" />
-<ttt :x="pos_x" :y="y + 200" @click="pos_x++">
+<ttt :x="pos_x" :y="y + 200" @click="pos_x++" $="delay,2000 y(1000),1000">
 <button @click="pos_x++">Click me</button>
 <let :z="pos_x + 100" />
 <ccc :x="pos_x + z" />
