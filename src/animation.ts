@@ -247,7 +247,7 @@ function _raf(easing: Easing, start: number, duration: number, setup: AnimationS
     }
   })
 }
-export function createAnimate(context: Context, source?: ElementNode) {
+export function createAnimate(context: Context, _source?: ElementNode) {
   return (attrs: Attrs, node: Node) => {
     for (const [_, value] of Object.entries(attrs)) {
       if ((value as AnimationAttr)[0] !== ANIMATION)
