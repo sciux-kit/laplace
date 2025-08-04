@@ -9,20 +9,15 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./builtins": {
-      "types": "./dist/builtins/index.d.ts",
-      "import": "./dist/builtins/index.js",
-      "dev": "./src/builtins/index.ts"
+    "./parser": {
+      "dev": "./src/parser.ts",
+      "types": "./dist/parser.d.ts",
+      "import": "./dist/parser.js"
     },
-    "./builtins/*": {
-      "types": "./dist/builtins/*.d.ts",
-      "import": "./dist/builtins/*.js",
-      "dev": "./src/builtins/*.ts"
-    },
-    "./middlewares/*": {
-      "types": "./dist/middlewares/*.d.ts",
-      "import": "./dist/middlewares/*.js",
-      "dev": "./src/middlewares/*.ts"
+    "./selector": {
+      "dev": "./src/selector.ts",
+      "types": "./dist/selector.d.ts",
+      "import": "./dist/selector.js"
     }
   },
   "types": "./dist/index.d.ts",

@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/builtins/*.ts', 'src/middlewares/*.ts'],
+  entry: ['src/index.ts', 'src/parser.ts', 'src/selector.ts'],
   format: 'esm',
   tsconfig: './tsconfig.json',
   target: ['es6'],
