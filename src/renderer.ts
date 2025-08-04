@@ -338,7 +338,12 @@ export function renderNode(
     (node as ElementNode).attributes = originalAttrs
 
     const domNode = result ?? []
-    node.domNode = domNode
+    if (node.domNode) {
+      patch(node.domNode, domNode as Node)
+    }
+    else {
+      node.domNode = domNode
+    }
     node.space = space
     return domNode
   }
@@ -367,14 +372,7 @@ export function renderRoots(roots: BaseNode[], processor?: Processor<Context>, s
 
 export function createUpdater() {
   return (node: BaseNode) => {
-    const newDomNode = renderNode(node, node.processor, node.space ?? root) as Node
-    if (node.domNode) {
-      patch(node.domNode as Node, newDomNode as Node)
-      node.domNode = newDomNode
-    }
-    else {
-      node.domNode = newDomNode
-    }
+    renderNode(node, node.processor, node.space ?? root)
   }
 }
 
