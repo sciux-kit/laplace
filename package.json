@@ -1,8 +1,8 @@
 {
   "name": "sciux-laplace",
   "type": "module",
-  "version": "0.0.1-beta.13",
-  "description": "Renderer for Sciux Toolkit.",
+  "version": "0.0.1",
+  "description": "Sciux Laplace: AI-naive DSL renderer",
   "exports": {
     ".": {
       "dev": "./src/index.ts",
